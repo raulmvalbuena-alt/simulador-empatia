@@ -458,6 +458,15 @@ main { padding-bottom: 24px; max-width: 1240px; }
 .danger-zone { border-color: color-mix(in srgb, var(--high) 40%, var(--line)); }
 .btn.danger { background: var(--high); color: #fff; }
 .alias-show { font-weight: 700; color: var(--accent); }
+.mh { font-size: 15px; margin: 0 0 6px; font-family: var(--font-body); font-weight: 700; }
+.bars-h { display: grid; gap: 8px; }
+.bar-row { display: grid; grid-template-columns: 150px 1fr 110px; gap: 10px; align-items: center; font-size: 13.5px; }
+.bar-row .track { height: 14px; background: var(--sunk); border-radius: 7px; overflow: hidden; display: flex; }
+.bar-row .seg-stt { background: var(--calm); } .bar-row .seg-llm { background: var(--accent); } .bar-row .seg-tts { background: var(--mid); } .bar-row .seg-oth { background: var(--line); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.price-in { width: 90px; min-height: 34px; padding: 4px 8px; }
+@media (max-width: 640px) { .bar-row { grid-template-columns: 90px 1fr 80px; } }
 .auth input[type=password] { background: var(--sunk); border: 1px solid transparent; border-radius: 10px; padding: 12px; min-height: 48px; font-size: 16px; }
 .auth input[type=password]:focus { border-color: var(--accent); outline: none; }
 .login-links { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
@@ -599,6 +608,25 @@ main { padding-bottom: 24px; max-width: 1240px; }
         <button class="btn" id="inviteBtn" type="submit">Enviar invitación</button>
       </form>
       <div class="muted" id="inviteMsg" role="status"></div>
+    </div>
+    <div class="card" style="display:grid; gap:14px">
+      <div class="page-h"><h2 style="font-size:19px">Consumo y rendimiento</h2>
+        <div class="field-row" style="flex:0 0 auto; gap:8px">
+          <label class="sr-only" for="mRange">Periodo</label>
+          <select id="mRange" style="min-width:150px"><option value="7">Últimos 7 días</option><option value="30" selected>Últimos 30 días</option><option value="3650">Todo</option></select>
+          <button class="btn ghost small" id="mExport" type="button">Exportar llamadas (CSV)</button>
+        </div>
+      </div>
+      <div class="stats" id="mTiles"></div>
+      <div>
+        <h3 class="mh">Tiempo de turno (lo que nota el usuario)</h3>
+        <p class="muted" style="margin:0 0 8px">Desde que terminas de hablar hasta que el personaje empieza a sonar. Mediana y percentil 90 (el 90 % de los turnos tarda menos).</p>
+        <div id="mTurn"></div>
+      </div>
+      <div class="table-card" style="padding:0"><h3 class="mh">Por paso</h3><div id="mSteps"></div></div>
+      <div class="table-card" style="padding:0"><h3 class="mh">Claude frente a GPT</h3><div id="mProv"></div></div>
+      <details><summary>Precios usados para el coste (USD, editables)</summary><div id="mPrices" style="margin-top:10px"></div></details>
+      <p class="muted" style="margin:0">Coste estimado con los precios de la tabla. La duración de la voz del personaje se estima por caracteres. Para el importe exacto, consulta la facturación de Anthropic y OpenAI.</p>
     </div>
     <div class="card table-card"><h2 style="font-size:17px; padding:8px">Participantes</h2><div id="adminUsers"></div></div>
     <div class="card table-card"><h2 style="font-size:17px; padding:8px">Sesiones (por seudónimo)</h2><div id="adminSessions"></div></div>
@@ -789,10 +817,34 @@ async function fnJSON(name, body, signal) {
   return data;
 }
 
+/* Métricas de lo que nota el usuario: tiempo de turno desglosado */
+const M = { turn: null };
+function metricTurnStart(kind) { M.turn = { t0: performance.now(), stt_ms: null, llm_ms: null, tts_ms: null, kind }; }
+function metricSend(row) {
+  try {
+    const sid = (typeof state !== "undefined" && state.dbId) || null;
+    sb.from("client_metrics").insert({ session_id: sid, provider: state.provider, mode: state.mode, ...row }).then(() => {});
+  } catch (e) {}
+}
+function metricTurnEnd() {
+  if (!M.turn) return;
+  const t = M.turn; M.turn = null;
+  metricSend({ kind: "turn", total_ms: Math.round(performance.now() - t.t0), stt_ms: t.stt_ms, llm_ms: t.llm_ms, tts_ms: t.tts_ms });
+}
+
 /* IA: misma interfaz que usaba la demo (sample) */
 function makeSample() {
+  const STEP = { quick: "coach", default: "patient", complex: "eval" };
   const sample = async (prompt, opts = {}) => {
-    const d = await fnJSON("llm", { prompt, tier: opts.modelTier || "default", provider: (typeof state !== "undefined" && state.provider) || "anthropic" }, opts.signal);
+    const tier = opts.modelTier || "default";
+    const head = String(prompt).slice(0, 120);
+    const step = /^Eres coach/.test(head) ? "coach" : /^Eres evaluador/.test(head) ? "eval" : /^Eres /.test(head) ? "patient" : (STEP[tier] || tier);
+    if (step === "patient" && (!M.turn || M.turn.llm_ms != null)) metricTurnStart("text");
+    const t0 = performance.now();
+    const d = await fnJSON("llm", { prompt, tier, step, session_id: (typeof state !== "undefined" && state.dbId) || null, provider: (typeof state !== "undefined" && state.provider) || "anthropic" }, opts.signal);
+    const ms = Math.round(performance.now() - t0);
+    if (step === "patient" && M.turn) { M.turn.llm_ms = ms; if (!state.ttsOn) metricTurnEnd(); }
+    if (step === "eval") metricSend({ kind: "report", total_ms: ms, llm_ms: ms });
     return { text: d.text || "", model: d.model };
   };
   return sample;
@@ -825,9 +877,11 @@ function makeTTS() {
       const c = currentCase();
       const voice = OPENAI_VOICES.includes(opts.voice) ? opts.voice : (c.gender === "f" ? "coral" : "ash");
       const instructions = `Eres ${c.name}${c.age ? ", de " + c.age + " años" : ""}. Habla en ${LANG_NAME[state.lang] || "castellano de España"}, con naturalidad, como una persona real en un servicio de Urgencias, no como un locutor. Emoción: ${c.emocion || "neutra"}, intensidad ${state.emotion ?? 5} de 10. Que se note la emoción en el tono, el ritmo y las pausas, sin exagerar.`;
-      const res = await fnFetch("tts", { text, voice, instructions });
+      const tt0 = performance.now();
+      const res = await fnFetch("tts", { text, voice, instructions, session_id: state.dbId || null });
       if (!res.ok) throw { code: res.status === 429 ? "rate_limited" : "error" };
       const url = URL.createObjectURL(await res.blob());
+      if (M.turn) M.turn.tts_ms = Math.round(performance.now() - tt0);
       const a = player;
       a.src = url;
       audio = a;
@@ -838,7 +892,7 @@ function makeTTS() {
           a.onended = () => resolve();
           a.onerror = () => reject({ code: "error" });
           a.onpause = () => { if (a.ended || (a.duration && a.currentTime >= a.duration - 0.15)) return; if (audio === a) reject({ code: "viewer_stopped" }); };
-          a.play().catch(() => reject({ code: "not_granted" }));
+          a.play().then(() => metricTurnEnd()).catch(() => reject({ code: "not_granted" }));
         });
       } finally {
         rejectCurrent = null;
@@ -851,7 +905,7 @@ function makeTTS() {
 
 /* Dictado: graba con el micrófono y transcribe en el servidor al terminar */
 function makeDictation() {
-  let rec = null, stream = null, chunks = [], tick = null, pending = null;
+  let rec = null, stream = null, chunks = [], tick = null, pending = null, recStart = 0;
   const cb = { s: () => {}, p: () => {}, f: () => {} };
   const pickMime = () => ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
   return {
@@ -868,6 +922,7 @@ function makeDictation() {
       rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
       rec.start(250);
       const t0 = Date.now();
+      recStart = t0;
       cb.s({ state: "listening" });
       cb.p({ text: "Grabando…" });
       tick = setInterval(() => cb.p({ text: `Grabando… ${Math.round((Date.now() - t0) / 1000)} s` }), 1000);
@@ -875,6 +930,8 @@ function makeDictation() {
     stop() {
       if (pending) return pending;
       if (!rec || rec.state !== "recording") return Promise.resolve();
+      metricTurnStart("voice");
+      const recSecs = Math.round((Date.now() - recStart) / 100) / 10;
       pending = (async () => {
         clearInterval(tick);
         const r = rec;
@@ -890,7 +947,11 @@ function makeDictation() {
             const ext = (r.mimeType || "").includes("mp4") ? "mp4" : (r.mimeType || "").includes("ogg") ? "ogg" : "webm";
             fd.append("file", blob, "voz." + ext);
             fd.append("lang", state.lang || "es");
+            fd.append("secs", String(recSecs));
+            if (state.dbId) fd.append("session_id", state.dbId);
+            const st0 = performance.now();
             text = ((await fnJSON("stt", fd)).text || "").trim();
+            if (M.turn) M.turn.stt_ms = Math.round(performance.now() - st0);
           } catch (e) { text = ""; }
         }
         cb.f({ text });
@@ -2307,6 +2368,7 @@ async function openAdmin() {
     sb.from("sessions").select("id, user_id, case_id, level, provider, role_label, started_at, duration_s, total, exited, hints, scores, feedback").order("started_at", { ascending: false }).limit(500),
     sb.from("profiles").select("id, pseudonym")
   ]);
+  loadMetrics();
   const ps = new Map((profs || []).map(p => [p.id, p.pseudonym]));
   state.adminRows = (sess || []).map(s => ({ ...s, pseudonym: ps.get(s.user_id) || "—" }));
   const done = state.adminRows.filter(s => s.total != null);
@@ -2320,6 +2382,92 @@ async function openAdmin() {
     <tr><td>${fmtDate(s.started_at)}</td><td><b>${esc(s.pseudonym)}</b></td><td>${esc(s.role_label || "—")}</td><td>${esc(caseTitle(s.case_id))}</td><td>${s.level}</td><td>${s.provider === "openai" ? "GPT" : "Claude"}</td>
     <td>${s.total != null ? s.total : s.exited ? "Sin evaluar" : "—"}</td><td>${s.feedback?.util ?? "—"}</td><td>${s.feedback?.real ?? "—"}</td></tr>`).join("")}</tbody></table>` : `<span class="muted">Aún no hay sesiones.</span>`;
 }
+/* ---------- Consumo y rendimiento ---------- */
+const STEP_NAME = { patient: "Personaje", coach: "Pistas", eval: "Evaluación", tts: "Voz", stt: "Transcripción", default: "Personaje", quick: "Pistas", complex: "Evaluación" };
+const q = (arr, p) => { const a = arr.filter(v => v != null).sort((x, y) => x - y); if (!a.length) return null; const i = Math.min(a.length - 1, Math.max(0, Math.ceil(p * a.length) - 1)); return a[i]; };
+const fmtMs = v => v == null ? "—" : v >= 10000 ? (v / 1000).toFixed(0) + " s" : (v / 1000).toFixed(1) + " s";
+const fmtUsd = v => v == null ? "—" : v < 0.01 ? "$" + v.toFixed(4) : "$" + v.toFixed(2);
+async function loadMetrics() {
+  const days = Number($("mRange").value || 30);
+  const since = new Date(Date.now() - days * 864e5).toISOString();
+  $("mTiles").innerHTML = `<span class="muted"><span class="spinner"></span>Calculando…</span>`;
+  const [{ data: calls, error: e1 }, { data: cm }, { data: prices }] = await Promise.all([
+    sb.from("api_calls_cost").select("created_at, session_id, fn, step, provider, model, status, latency_ms, input_tokens, output_tokens, chars, audio_seconds, cost_usd").gte("created_at", since).order("created_at", { ascending: false }).limit(5000),
+    sb.from("client_metrics").select("created_at, kind, provider, mode, total_ms, stt_ms, llm_ms, tts_ms").gte("created_at", since).limit(5000),
+    sb.from("api_prices").select("*").order("model")
+  ]);
+  if (e1) { $("mTiles").textContent = "No se han podido cargar las métricas: " + e1.message; return; }
+  state.mCalls = calls || [];
+  const C = state.mCalls, sum = (a, f) => a.reduce((s, x) => s + (Number(f(x)) || 0), 0);
+  const cost = sum(C, x => x.cost_usd);
+  const sessIds = new Set(C.filter(x => x.step === "eval" && x.status === "ok" && x.session_id).map(x => x.session_id));
+  const costSess = sessIds.size ? sum(C.filter(x => sessIds.has(x.session_id)), x => x.cost_usd) / sessIds.size : null;
+  const errs = C.filter(x => x.status !== "ok").length;
+  const turns = (cm || []).filter(x => x.kind === "turn");
+  $("mTiles").innerHTML = `
+    <div class="stat"><b>${fmtUsd(cost)}</b><span>coste estimado del periodo</span></div>
+    <div class="stat"><b>${fmtUsd(costSess)}</b><span>coste medio por sesión con informe</span></div>
+    <div class="stat"><b>${fmtMs(q(turns.map(t => t.total_ms), 0.5))}</b><span>tiempo de turno (mediana)</span></div>
+    <div class="stat"><b>${C.length ? Math.round(errs / C.length * 1000) / 10 + " %" : "—"}</b><span>llamadas con error (${errs} de ${C.length})</span></div>`;
+
+  const turnRow = (label, rows) => {
+    if (!rows.length) return `<div class="bar-row"><span>${label}</span><span class="muted">Sin datos todavía</span><span></span></div>`;
+    const med = k => q(rows.map(r => r[k]), 0.5) || 0;
+    const tot = q(rows.map(r => r.total_ms), 0.5) || 1, p90 = q(rows.map(r => r.total_ms), 0.9);
+    const s = med("stt_ms"), l = med("llm_ms"), t = med("tts_ms"), o = Math.max(0, tot - s - l - t);
+    const w = v => (v / Math.max(tot, 1) * 100).toFixed(1) + "%";
+    return `<div class="bar-row"><span>${label} <span class="muted">(${rows.length})</span></span><div class="track" title="Transcripción ${fmtMs(s)} · IA ${fmtMs(l)} · Voz ${fmtMs(t)} · Otros ${fmtMs(o)}"><span class="seg-stt" style="width:${w(s)}"></span><span class="seg-llm" style="width:${w(l)}"></span><span class="seg-tts" style="width:${w(t)}"></span><span class="seg-oth" style="width:${w(o)}"></span></div><span><b>${fmtMs(tot)}</b> · p90 ${fmtMs(p90)}</span></div>`;
+  };
+  $("mTurn").innerHTML = `<div class="bars-h">
+    ${turnRow("Voz · Claude", turns.filter(t => t.mode === "voice" && t.provider !== "openai"))}
+    ${turnRow("Voz · GPT", turns.filter(t => t.mode === "voice" && t.provider === "openai"))}
+    ${turnRow("Texto · Claude", turns.filter(t => t.mode !== "voice" && t.provider !== "openai"))}
+    ${turnRow("Texto · GPT", turns.filter(t => t.mode !== "voice" && t.provider === "openai"))}
+  </div><div class="legend"><span><i class="seg-stt" style="background:var(--calm)"></i>Transcripción</span><span><i style="background:var(--accent)"></i>IA (personaje)</span><span><i style="background:var(--mid)"></i>Generar la voz</span><span><i style="background:var(--line)"></i>Red y otros</span></div>`;
+
+  const groups = (keyf) => { const m = new Map(); C.forEach(x => { const k = keyf(x); if (!m.has(k)) m.set(k, []); m.get(k).push(x); }); return m; };
+  const stepRows = [...groups(x => (STEP_NAME[x.step] || x.step) + "|" + (x.model || "")).entries()].sort((a, b) => sum(b[1], x => x.cost_usd) - sum(a[1], x => x.cost_usd));
+  $("mSteps").innerHTML = `<table class="dtable"><thead><tr><th>Paso</th><th>Modelo</th><th>Llamadas</th><th>Latencia mediana</th><th>p90</th><th>Tokens medios (entrada / salida)</th><th>Coste</th><th>Coste medio</th><th>Errores</th></tr></thead><tbody>${stepRows.map(([k, rows]) => {
+    const [st, model] = k.split("|"); const ok = rows.filter(r => r.status === "ok");
+    const avgIn = ok.length ? Math.round(sum(ok, r => r.input_tokens) / ok.length) : 0, avgOut = ok.length ? Math.round(sum(ok, r => r.output_tokens) / ok.length) : 0;
+    const c = sum(rows, r => r.cost_usd);
+    return `<tr><td><b>${esc(st)}</b></td><td>${esc(model)}</td><td>${rows.length}</td><td>${fmtMs(q(ok.map(r => r.latency_ms), 0.5))}</td><td>${fmtMs(q(ok.map(r => r.latency_ms), 0.9))}</td><td>${avgIn || avgOut ? avgIn + " / " + avgOut : "—"}</td><td>${fmtUsd(c)}</td><td>${fmtUsd(rows.length ? c / rows.length : null)}</td><td>${rows.length - ok.length}</td></tr>`;
+  }).join("") || `<tr><td colspan="9" class="muted">Sin llamadas en este periodo.</td></tr>`}</tbody></table>`;
+
+  const provRow = (label, pf) => {
+    const rows = C.filter(x => x.fn === "llm" && pf(x));
+    const ids = new Set(rows.filter(x => x.step === "eval" && x.status === "ok" && x.session_id).map(x => x.session_id));
+    const perS = ids.size ? sum(C.filter(x => ids.has(x.session_id)), x => x.cost_usd) / ids.size : null;
+    const pat = rows.filter(x => x.step === "patient" && x.status === "ok");
+    const ev = rows.filter(x => x.step === "eval" && x.status === "ok");
+    return `<tr><td><b>${label}</b></td><td>${ids.size}</td><td>${fmtUsd(perS)}</td><td>${fmtMs(q(pat.map(r => r.latency_ms), 0.5))}</td><td>${fmtMs(q(pat.map(r => r.latency_ms), 0.9))}</td><td>${fmtMs(q(ev.map(r => r.latency_ms), 0.5))}</td><td>${rows.filter(r => r.status !== "ok").length}</td></tr>`;
+  };
+  $("mProv").innerHTML = `<table class="dtable"><thead><tr><th>Modelo</th><th>Sesiones con informe</th><th>Coste por sesión (todo incluido)</th><th>Personaje · mediana</th><th>Personaje · p90</th><th>Evaluación · mediana</th><th>Errores</th></tr></thead><tbody>
+    ${provRow("Claude", x => x.provider !== "openai")}${provRow("GPT", x => x.provider === "openai")}</tbody></table>`;
+
+  $("mPrices").innerHTML = `<table class="dtable"><thead><tr><th>Modelo</th><th>Entrada / 1M tokens</th><th>Salida / 1M tokens</th><th>Por minuto</th><th>Fuente</th></tr></thead><tbody>${(prices || []).map(p => `
+    <tr><td>${esc(p.label || p.model)}<div class="muted">${esc(p.model)}</div></td>
+    ${["in_per_mtok", "out_per_mtok", "per_minute"].map(f => `<td><input class="price-in" type="number" step="0.001" min="0" data-model="${esc(p.model)}" data-f="${f}" value="${p[f] ?? ""}" aria-label="${f} ${esc(p.model)}"></td>`).join("")}
+    <td class="muted" style="white-space:normal; max-width:260px">${esc(p.source || "")}</td></tr>`).join("")}</tbody></table>`;
+  document.querySelectorAll(".price-in").forEach(inp => inp.onchange = async () => {
+    const v = inp.value === "" ? null : Number(inp.value);
+    const { error } = await sb.from("api_prices").update({ [inp.dataset.f]: v, updated_at: new Date().toISOString(), source: "Editado en el panel" }).eq("model", inp.dataset.model);
+    showHint(error ? "No se ha podido guardar el precio: " + error.message : "Precio guardado. Recalculando…");
+    if (!error) loadMetrics();
+  });
+}
+$("mRange").onchange = loadMetrics;
+$("mExport").onclick = () => {
+  const rows = state.mCalls || [];
+  const head = ["fecha", "sesion", "funcion", "paso", "proveedor", "modelo", "estado", "latencia_ms", "tokens_entrada", "tokens_salida", "caracteres", "segundos_audio", "coste_usd"];
+  const qq = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = [head.join(";")].concat(rows.map(r => [r.created_at, r.session_id, r.fn, r.step, r.provider, r.model, r.status, r.latency_ms, r.input_tokens, r.output_tokens, r.chars, r.audio_seconds, r.cost_usd].map(qq).join(";")));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" }));
+  a.download = `consumo-simulador-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+};
+
 $("inviteForm").addEventListener("submit", async e => {
   e.preventDefault();
   const email = $("inviteEmail").value.trim();

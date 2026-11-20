@@ -29,3 +29,10 @@ El primer usuario dado de alta queda como administrador (Docencia).
 ## Uso de datos
 
 Casos ficticios. No introducir datos de pacientes reales. Puntuaciones formativas: no evalúan el desempeño laboral.
+
+## Seguridad
+
+- Las instrucciones de la IA (personaje, coach y evaluador) se construyen en el servidor (`llm`): la web solo envía el caso y la conversación. Tras cambiar casos o prompts en `index.html`, regenera `prompts.ts` con `python3 tools/gen_prompts.py prompts.ts` y vuelve a desplegar la función.
+- Tope diario de uso por usuario (secretos opcionales `QUOTA_LLM`, `QUOTA_TTS`, `QUOTA_STT`).
+- La evaluación original queda guardada por el servidor (`sessions.eval_raw`); el informe y la nota no se pueden modificar una vez guardados.
+- La librería de Supabase se sirve desde `vendor/` con comprobación de integridad, y la página tiene una política de seguridad de contenidos (CSP). Tras cambiar un `<script>` en línea, ejecuta `python3 tools/update_csp.py`.

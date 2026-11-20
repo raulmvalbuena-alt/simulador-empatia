@@ -422,7 +422,7 @@ main { padding-bottom: 24px; max-width: 1240px; }
 
 /* ===== Web: acceso, navegación, historial y panel ===== */
 .user-box { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.user-box .who-chip { font-weight: 700; font-size: 13px; background: var(--accent-soft); color: var(--accent); padding: 5px 12px; border-radius: 999px; }
+.user-box .who-chip { flex: none; white-space: nowrap; font-weight: 700; font-size: 13px; background: var(--accent-soft); color: var(--accent); padding: 5px 12px; border-radius: 999px; }
 #userNav { display: flex; gap: 4px; flex-wrap: wrap; }
 #userNav button { border: 0; background: transparent; color: var(--muted); font-weight: 600; font-size: 13.5px; min-height: 36px; padding: 6px 10px; border-radius: 8px; }
 #userNav button:hover { background: var(--sunk); color: var(--ink); }
@@ -458,6 +458,17 @@ main { padding-bottom: 24px; max-width: 1240px; }
 .danger-zone { border-color: color-mix(in srgb, var(--high) 40%, var(--line)); }
 .btn.danger { background: var(--high); color: #fff; }
 .alias-show { font-weight: 700; color: var(--accent); }
+.auth input[type=password] { background: var(--sunk); border: 1px solid transparent; border-radius: 10px; padding: 12px; min-height: 48px; font-size: 16px; }
+.auth input[type=password]:focus { border-color: var(--accent); outline: none; }
+.login-links { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 640px) {
+  header.top { padding: 8px 12px; gap: 6px; }
+  .top-right { width: 100%; flex-wrap: nowrap; gap: 6px; }
+  header.top .pill, header.top .theme-seg { display: none; }
+  .user-box { flex-wrap: nowrap; width: 100%; min-width: 0; }
+  #userNav { flex-wrap: nowrap; overflow-x: auto; min-width: 0; scrollbar-width: none; }
+  #userNav button { padding: 6px 8px; font-size: 13px; white-space: nowrap; }
+}
 </style>
 </head>
 <body>
@@ -489,21 +500,49 @@ main { padding-bottom: 24px; max-width: 1240px; }
   <section id="viewLogin" class="auth hidden">
     <div class="card">
       <h1>Entra en el simulador</h1>
-      <p>Escribe el email con el que te dieron de alta. Te enviaremos un enlace de acceso; no necesitas contraseña.</p>
+      <p>Usa el email con el que te dieron de alta y tu contraseña.</p>
       <form id="loginForm" class="auth" style="margin:0; gap:12px" novalidate>
         <label for="loginEmail">Email
-          <input type="email" id="loginEmail" autocomplete="email" inputmode="email" required>
+          <input type="email" id="loginEmail" autocomplete="username" inputmode="email" required>
         </label>
-        <button class="btn big" id="loginBtn" type="submit">Enviarme el enlace</button>
+        <label for="loginPass">Contraseña
+          <input type="password" id="loginPass" autocomplete="current-password" required>
+        </label>
+        <button class="btn big" id="loginBtn" type="submit">Entrar</button>
         <div class="form-msg" id="loginMsg" role="alert"></div>
+        <div class="login-links">
+          <button class="linkbtn" id="forgotBtn" type="button">He olvidado mi contraseña</button>
+          <button class="linkbtn" id="linkBtn" type="button">Entrar con un enlace por email</button>
+        </div>
       </form>
       <div id="loginSent" class="hidden" style="display:grid; gap:10px">
         <p class="form-msg ok" style="font-weight:700">Revisa tu correo</p>
-        <p>Hemos enviado un enlace a <b id="sentTo"></b>. Ábrelo en este mismo dispositivo para entrar. Si no llega en unos minutos, mira en la carpeta de spam.</p>
-        <button class="btn ghost" id="loginAgain" type="button">Usar otro email</button>
+        <p>Hemos enviado <span id="sentWhat">un enlace</span> a <b id="sentTo"></b>. Ábrelo en este mismo dispositivo. Si no llega en unos minutos, mira en la carpeta de spam.</p>
+        <button class="btn ghost" id="loginAgain" type="button">Volver</button>
       </div>
     </div>
     <p class="fine" style="text-align:center">Piloto de formación en comunicación clínica. Acceso solo para participantes invitados por Docencia.</p>
+  </section>
+
+  <!-- CONTRASEÑA -->
+  <section id="viewPassword" class="auth hidden">
+    <div class="card">
+      <h1 id="pwTitle">Crea tu contraseña</h1>
+      <p id="pwLead">La usarás para entrar en el simulador desde cualquier dispositivo.</p>
+      <form id="pwForm" class="auth" style="margin:0; gap:12px" novalidate>
+        <input type="email" id="pwUser" autocomplete="username" class="hidden" tabindex="-1" aria-hidden="true">
+        <label for="pw1">Contraseña nueva
+          <input type="password" id="pw1" autocomplete="new-password" minlength="8" required>
+        </label>
+        <label for="pw2">Repite la contraseña
+          <input type="password" id="pw2" autocomplete="new-password" minlength="8" required>
+        </label>
+        <p class="muted" style="margin:0">Al menos 8 caracteres. Mejor si mezcla letras y números.</p>
+        <button class="btn big" id="pwBtn" type="submit">Guardar contraseña</button>
+        <button class="btn ghost hidden" id="pwCancel" type="button">Cancelar</button>
+        <div class="form-msg" id="pwMsg" role="alert"></div>
+      </form>
+    </div>
   </section>
 
   <!-- CONSENTIMIENTO -->
@@ -540,7 +579,9 @@ main { padding-bottom: 24px; max-width: 1240px; }
     <div class="card"><h2 style="font-size:17px">Tu evolución</h2><div class="history" id="histChart" style="margin-top:8px"></div></div>
     <div id="histList"></div>
     <div class="card danger-zone" style="display:grid; gap:10px">
-      <h2 style="font-size:17px">Eliminar mi cuenta</h2>
+      <h2 style="font-size:17px">Mi cuenta</h2>
+      <div><button class="btn ghost" id="changePw" type="button">Cambiar contraseña</button></div>
+      <h2 style="font-size:17px; margin-top:8px">Eliminar mi cuenta</h2>
       <p class="muted" style="margin:0">Se borran tu acceso, tu seudónimo y todas tus sesiones. No se puede deshacer.</p>
       <div><button class="btn danger" id="deleteMe" type="button">Eliminar mi cuenta y mis datos</button></div>
     </div>
@@ -760,6 +801,16 @@ function makeSample() {
 /* Voz del personaje: OpenAI TTS a través del servidor */
 const OPENAI_VOICES = ["ash", "onyx", "echo", "verse", "ballad", "coral", "sage", "shimmer", "nova", "alloy", "fable"];
 const LANG_NAME = { es: "castellano de España", ca: "catalán", en: "inglés británico" };
+/* Un solo reproductor de audio para toda la sesión: en el iPhone hay que "desbloquearlo" con un toque */
+const SILENT_MP3 = "data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA//OEwAAAAAAAAAAAAEluZm8AAAAPAAAAEwAAAogAVVVVVVVeXl5eXmhoaGhocXFxcXFxe3t7e3uEhISEhI6Ojo6Ol5eXl5eXoaGhoaGqqqqqqrS0tLS0vb29vb29x8fHx8fQ0NDQ0Nra2tra4+Pj4+Pj7e3t7e329vb29v//////AAAAAExhdmM2MC4zMQAAAAAAAAAAAAAAACQDAAAAAAAAAAKIyEHybQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//MUxAAAAANIAAAAAExBTUUzLjEwMFVV//MUxAsAAANIAAAAAFVVVVVVVVVVVVVV//MUxBYAAANIAAAAAFVVVVVVVVVVVVVV//MUxCEAAANIAAAAAFVVVVVVVVVVVVVV//MUxCwAAANIAAAAAFVVVVVVVVVVVVVV//MUxDcAAANIAAAAAFVVVVVVVVVVVVVV//MUxEIAAANIAAAAAFVVVVVVVVVVVVVV//MUxE0AAANIAAAAAFVVVVVVVVVVVVVV//MUxFgAAANIAAAAAFVVVVVVVVVVVVVV//MUxGMAAANIAAAAAFVVVVVVVVVVVVVV//MUxG4AAANIAAAAAFVVVVVVVVVVVVVV//MUxHkAAANIAAAAAFVVVVVVVVVVVVVV//MUxIQAAANIAAAAAFVVVVVVVVVVVVVV//MUxI8AAANIAAAAAFVVVVVVVVVVVVVV//MUxJoAAANIAAAAAFVVVVVVVVVVVVVV//MUxKUAAANIAAAAAFVVVVVVVVVVVVVV//MUxLAAAANIAAAAAFVVVVVVVVVVVVVV//MUxLsAAANIAAAAAFVVVVVVVVVVVVVV//MUxMYAAANIAAAAAFVVVVVVVVVVVVVV";
+const player = new Audio();
+player.preload = "auto";
+player.setAttribute("playsinline", "");
+let audioUnlocked = false;
+window.unlockAudio = function () {
+  if (audioUnlocked) return;
+  try { player.src = SILENT_MP3; const p = player.play(); if (p) p.then(() => { audioUnlocked = true; }).catch(() => {}); } catch (e) {}
+};
 function makeTTS() {
   let audio = null, stateCb = () => {}, rejectCurrent = null;
   return {
@@ -777,7 +828,8 @@ function makeTTS() {
       const res = await fnFetch("tts", { text, voice, instructions });
       if (!res.ok) throw { code: res.status === 429 ? "rate_limited" : "error" };
       const url = URL.createObjectURL(await res.blob());
-      const a = new Audio(url);
+      const a = player;
+      a.src = url;
       audio = a;
       stateCb({ state: "speaking" });
       try {
@@ -785,6 +837,7 @@ function makeTTS() {
           rejectCurrent = reject;
           a.onended = () => resolve();
           a.onerror = () => reject({ code: "error" });
+          a.onpause = () => { if (a.ended || (a.duration && a.currentTime >= a.duration - 0.15)) return; if (audio === a) reject({ code: "viewer_stopped" }); };
           a.play().catch(() => reject({ code: "not_granted" }));
         });
       } finally {
@@ -2019,7 +2072,7 @@ state.dbId = null;
 state.viewOnly = false;
 
 const APP_URL = location.origin + location.pathname;
-const VIEWS_EXTRA = ["viewLogin", "viewConsent", "viewHistory", "viewAdmin"];
+const VIEWS_EXTRA = ["viewLogin", "viewPassword", "viewConsent", "viewHistory", "viewAdmin"];
 const _show = window.show;
 window.show = function (view) {
   VIEWS_EXTRA.forEach(v => $(v).classList.toggle("hidden", v !== view));
@@ -2038,23 +2091,44 @@ function showLogin(msg) {
   $("loginSent").classList.add("hidden");
   show("viewLogin");
 }
+const validEmail = e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
 $("loginForm").addEventListener("submit", async e => {
   e.preventDefault();
-  const email = $("loginEmail").value.trim().toLowerCase();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $("loginMsg").textContent = "Escribe un email válido."; return; }
+  const email = $("loginEmail").value.trim().toLowerCase(), password = $("loginPass").value;
+  if (!validEmail(email)) { $("loginMsg").textContent = "Escribe un email válido."; return; }
+  if (!password) { $("loginMsg").textContent = "Escribe tu contraseña, o entra con un enlace por email."; return; }
   $("loginBtn").disabled = true; $("loginMsg").textContent = "";
-  const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false, emailRedirectTo: APP_URL } });
+  const { error } = await sb.auth.signInWithPassword({ email, password });
   $("loginBtn").disabled = false;
+  if (error) {
+    $("loginMsg").textContent = /invalid login credentials/i.test(error.message)
+      ? "Email o contraseña incorrectos. Si aún no has creado tu contraseña, entra con un enlace por email."
+      : "No se ha podido entrar: " + error.message;
+    return;
+  }
+  $("loginPass").value = "";
+  enterApp();
+});
+async function sendLink(kind) {
+  const email = $("loginEmail").value.trim().toLowerCase();
+  if (!validEmail(email)) { $("loginMsg").textContent = "Escribe primero tu email."; $("loginEmail").focus(); return; }
+  $("loginMsg").textContent = "";
+  const { error } = kind === "reset"
+    ? await sb.auth.resetPasswordForEmail(email, { redirectTo: APP_URL })
+    : await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false, emailRedirectTo: APP_URL } });
   if (error) {
     $("loginMsg").textContent = /signups not allowed|not found|not allowed/i.test(error.message)
       ? "Este email no está dado de alta en el piloto. Pide acceso a Docencia."
-      : /rate|seconds/i.test(error.message) ? "Has pedido varios enlaces seguidos. Espera un minuto y vuelve a intentarlo." : "No se ha podido enviar el enlace: " + error.message;
+      : /rate|seconds/i.test(error.message) ? "Has pedido varios correos seguidos. Espera unos minutos y vuelve a intentarlo." : "No se ha podido enviar el correo: " + error.message;
     return;
   }
   $("sentTo").textContent = email;
+  $("sentWhat").textContent = kind === "reset" ? "un enlace para crear una contraseña nueva" : "un enlace de acceso";
   $("loginForm").classList.add("hidden");
   $("loginSent").classList.remove("hidden");
-});
+}
+$("forgotBtn").onclick = () => sendLink("reset");
+$("linkBtn").onclick = () => sendLink("link");
 $("loginAgain").onclick = () => { $("loginForm").classList.remove("hidden"); $("loginSent").classList.add("hidden"); };
 
 async function loadProfile() {
@@ -2075,10 +2149,38 @@ async function enterApp() {
   $("aliasShow").textContent = p.pseudonym;
   if (p.role_label && ROLE_SHORT.some(r => r[0] === p.role_label)) { $("role").value = p.role_label; state.role = p.role_label; }
   if (!p.consent_at) { show("viewConsent"); return; }
+  if (state.recovery || !p.has_password) { openPassword(state.recovery ? "reset" : "create"); return; }
   await loadHistoryDB();
   renderSetup();
   show("viewSetup");
 }
+function openPassword(mode) {
+  state.pwMode = mode;
+  $("pwTitle").textContent = mode === "change" ? "Cambiar contraseña" : mode === "reset" ? "Crea una contraseña nueva" : "Crea tu contraseña";
+  $("pwLead").textContent = mode === "create" ? "La usarás para entrar en el simulador desde cualquier dispositivo, también desde el móvil." : "Escribe la nueva contraseña dos veces.";
+  $("pwCancel").classList.toggle("hidden", mode !== "change");
+  $("pw1").value = ""; $("pw2").value = ""; $("pwMsg").textContent = "";
+  sb.auth.getUser().then(({ data }) => { $("pwUser").value = data.user ? data.user.email : ""; });
+  show("viewPassword");
+  $("pw1").focus();
+}
+$("pwForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const a = $("pw1").value, b = $("pw2").value;
+  if (a.length < 8) { $("pwMsg").textContent = "La contraseña debe tener al menos 8 caracteres."; return; }
+  if (a !== b) { $("pwMsg").textContent = "Las dos contraseñas no coinciden."; return; }
+  $("pwBtn").disabled = true; $("pwMsg").textContent = "";
+  const { error } = await sb.auth.updateUser({ password: a });
+  $("pwBtn").disabled = false;
+  if (error) { $("pwMsg").textContent = /should be different|same/i.test(error.message) ? "La contraseña nueva debe ser distinta de la anterior." : /weak|characters/i.test(error.message) ? "Contraseña demasiado débil. Usa una más larga o con números." : "No se ha podido guardar: " + error.message; return; }
+  await sb.from("profiles").update({ has_password: true }).eq("id", state.profile.id);
+  state.profile.has_password = true; state.recovery = false;
+  $("pw1").value = ""; $("pw2").value = "";
+  await loadHistoryDB(); renderSetup(); show("viewSetup");
+  showHint("Contraseña guardada. A partir de ahora puedes entrar con tu email y tu contraseña.");
+});
+$("pwCancel").onclick = () => openHistory();
+$("changePw").onclick = () => openPassword("change");
 
 /* ---------- Consentimiento ---------- */
 $("consentChk").onchange = e => { $("consentBtn").disabled = !e.target.checked; };
@@ -2087,6 +2189,7 @@ $("consentBtn").onclick = async () => {
   const { error } = await sb.from("profiles").update({ consent_at: new Date().toISOString() }).eq("id", state.profile.id);
   if (error) { $("consentMsg").textContent = "No se ha podido guardar: " + error.message; $("consentBtn").disabled = false; return; }
   state.profile.consent_at = new Date().toISOString();
+  if (!state.profile.has_password) { openPassword("create"); return; }
   await loadHistoryDB();
   renderSetup();
   show("viewSetup");
@@ -2118,6 +2221,7 @@ async function loadHistoryDB() {
 }
 const _startSession = window.startSession;
 window.startSession = function () {
+  if (window.unlockAudio) unlockAudio();
   state.dbId = null;
   _startSession();
   const row = { user_id: state.profile.id, case_id: state.caseId, level: state.level, lang: state.lang, mode: state.mode, provider: state.provider, role_label: state.role || $("role").value };
@@ -2127,6 +2231,7 @@ window.startSession = function () {
   });
 };
 $("startBtn").onclick = () => window.startSession();
+$("bigMic").addEventListener("click", () => { if (window.unlockAudio) unlockAudio(); }, true);
 const _exitSession = window.exitSession;
 window.exitSession = function () {
   const id = state.dbId, secs = Math.floor((Date.now() - state.start) / 1000), turns = state.turns.slice();
@@ -2264,10 +2369,12 @@ VIEWS_EXTRA.forEach(v => $(v).classList.add("hidden"));
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
   const hashErr = new URLSearchParams(location.hash.slice(1)).get("error_description");
+  if (/type=recovery/.test(location.hash)) state.recovery = true;
   if (hashErr) history.replaceState(null, "", location.pathname);
   if (session) { history.replaceState(null, "", location.pathname); enterApp(); }
   else showLogin(hashErr ? "El enlace ha caducado o ya se usó. Pide uno nuevo." : "");
   sb.auth.onAuthStateChange((ev, s) => {
+    if (ev === "PASSWORD_RECOVERY") { state.recovery = true; if (state.profile) openPassword("reset"); }
     if (ev === "SIGNED_IN" && s && !state.profile) { history.replaceState(null, "", location.pathname); enterApp(); }
   });
 })();

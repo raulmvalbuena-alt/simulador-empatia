@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-K7PlpwBlCMBayFlQQvarbZZahP1sfBKhRh7KLBZvpyM=' 'sha256-1t64OfoAOrNCy6EgqBaxX4wteuTd1xnFoJUOupP7ldE='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-canIsXiihUEN3pJPjltr/dF40hoVwmNnY2pzaLYRQCU=' 'sha256-1t64OfoAOrNCy6EgqBaxX4wteuTd1xnFoJUOupP7ldE='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de empatía · Urgencias</title>
@@ -1863,10 +1863,16 @@ function askFinish() {
   $("cOk").disabled = !canEval;
   $("cText").textContent = canEval
     ? "Puedes terminar y ver tu informe, o salir sin evaluar. Si sales, la conversación no se guarda."
-    : (state.busy ? "Espera a que el personaje termine de responder para poder evaluar. También puedes salir sin evaluar." : "Para ver un informe necesitas al menos 2 intervenciones. Puedes salir sin evaluar; la conversación no se guarda.");
+    : (state.busy ? "El personaje está terminando de responder. El botón se activará en unos segundos. También puedes salir sin evaluar." : "Para ver un informe necesitas al menos 2 intervenciones. Puedes salir sin evaluar; la conversación no se guarda.");
   $("cCancel").textContent = state.ended ? "Volver" : "Seguir hablando";
   $("confirm").classList.remove("hidden");
   (canEval ? $("cOk") : $("cExit")).focus();
+  // Si el personaje aún está respondiendo, el botón se activa solo en cuanto termine
+  clearInterval(askFinish.wait);
+  if (state.busy && proTurns >= 1) askFinish.wait = setInterval(() => {
+    if ($("confirm").classList.contains("hidden")) { clearInterval(askFinish.wait); return; }
+    if (!state.busy) { clearInterval(askFinish.wait); askFinish(); }
+  }, 300);
 }
 function exitSession() {
   clearInterval(state.timer);

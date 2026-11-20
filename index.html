@@ -1,0 +1,2277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador de empatía · Urgencias</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Dirección: un box de Urgencias tranquilo. Neutros cálidos de piedra, verde azulado clínico como acento,
+     y la emoción del personaje en una escala azul → ámbar → coral (distinguible también por luminosidad).
+     Layout: el personaje en el centro del escenario; la transcripción a un lado; el micrófono siempre visible. */
+  --bg: #F4F1EC;
+  --surface: #FFFDFA;
+  --sunk: #EFEBE4;
+  --ink: #1E2A2F;
+  --muted: #5B676B;
+  --line: #E2DCD3;
+  --accent: #0E6A70;
+  --accent-ink: #FFFDFA;
+  --accent-soft: #DCEDEB;
+  --hint: #FFF2D2;
+  --hint-line: #DDAA43;
+  --calm: #2F7DA1;
+  --mid: #C4861A;
+  --high: #CC5236;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141B1E; --surface: #1B2428; --sunk: #222D32; --ink: #EDEAE4; --muted: #A4ADAE; --line: #2F3B40;
+    --accent: #5CC3C6; --accent-ink: #10201F; --accent-soft: #1E3A3B; --hint: #3A321D; --hint-line: #B78C35;
+    --calm: #62AFD3; --mid: #E2A643; --high: #EE7B60; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141B1E; --surface: #1B2428; --sunk: #222D32; --ink: #EDEAE4; --muted: #A4ADAE; --line: #2F3B40;
+  --accent: #5CC3C6; --accent-ink: #10201F; --accent-soft: #1E3A3B; --hint: #3A321D; --hint-line: #B78C35;
+  --calm: #62AFD3; --mid: #E2A643; --high: #EE7B60; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.hidden { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 700; font-size: 17px; }
+.brand-mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); display: grid; place-items: center; }
+.brand-mark svg { width: 18px; height: 18px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: var(--accent-soft); color: var(--accent); }
+.top-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.theme-seg { display: flex; gap: 2px; background: var(--sunk); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.theme-seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--muted); border-radius: 999px; min-height: 32px; padding: 4px 12px; font-size: 13px; font-weight: 600; transition: background .2s, color .2s; }
+.theme-seg button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.theme-seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(30, 42, 47, .14); }
+html { transition: background-color .3s; }
+body { transition: background-color .3s, color .3s; }
+@media (max-width: 640px) { .theme-seg button span { display: none; } .theme-seg button { padding: 4px 9px; } }
+.pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+main { max-width: 1180px; margin: 0 auto; padding: 8px 16px 120px; }
+
+.notice { border: 1px solid var(--line); border-left: 4px solid var(--high); background: var(--surface); padding: 12px 14px; border-radius: 10px; font-size: 14px; margin-bottom: 16px; }
+
+/* ---------- Configuración ---------- */
+.setup { display: grid; gap: 22px; }
+.hero { font-size: clamp(30px, 4.4vw, 44px); font-weight: 700; letter-spacing: -0.01em; }
+.lede { margin: 6px 0 0; color: var(--muted); font-size: 16px; max-width: 60ch; }
+.case-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.case { position: relative; text-align: left; background: var(--surface); border: 2px solid var(--line); border-radius: 18px; padding: 20px; display: grid; grid-template-columns: 112px 1fr; gap: 18px; align-items: center; transition: border-color .15s, box-shadow .15s; }
+.case:hover { border-color: var(--accent); }
+.case[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.case .check { position: absolute; top: 14px; right: 14px; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: none; place-items: center; }
+.case[aria-pressed="true"] .check { display: grid; }
+.case .who { font-family: var(--font-display); font-size: 22px; font-weight: 700; }
+.case .scene { margin: 4px 0 10px; color: var(--muted); font-size: 14.5px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--sunk); color: var(--muted); }
+.chip.accent { background: var(--accent-soft); color: var(--accent); }
+.case .title { font-size: 12.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+
+.avatar-wrap { position: relative; width: 112px; height: 112px; flex: none; }
+.avatar-wrap .ring { position: absolute; inset: 0; }
+.avatar-wrap .face { position: absolute; inset: 10px; border-radius: 50%; overflow: hidden; }
+.avatar-wrap.big { width: 148px; height: 148px; }
+.avatar-wrap.big .face { inset: 14px; }
+.avatar-wrap.speaking::after { content: ""; position: absolute; inset: -8px; border-radius: 50%; border: 3px solid var(--accent); animation: pulse 1.3s ease-out infinite; }
+@keyframes pulse { from { transform: scale(.94); opacity: .9; } to { transform: scale(1.14); opacity: 0; } }
+.avatar-wrap .face svg .blink { transform-box: fill-box; transform-origin: 50% 55%; animation: blink 5.2s infinite; }
+@keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 95.5% { transform: scaleY(0.08); } }
+.avatar-wrap .talk { opacity: 0; transform-box: fill-box; transform-origin: 50% 0%; }
+.avatar-wrap.speaking .talk { opacity: 1; animation: talk .3s ease-in-out infinite alternate; }
+@keyframes talk { from { transform: scaleY(.15); } to { transform: scaleY(1); } }
+.avatar-wrap .face { animation: faceIn .4s ease; }
+@keyframes faceIn { from { opacity: .35; } to { opacity: 1; } }
+
+.options { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px 28px; }
+.group { display: grid; gap: 8px; align-content: start; }
+.group-label { font-size: 13px; font-weight: 700; color: var(--muted); }
+.seg { display: flex; background: var(--sunk); border-radius: 12px; padding: 4px; gap: 4px; }
+.seg button { flex: 1; min-height: 44px; border: 0; border-radius: 9px; background: transparent; font-weight: 600; font-size: 14.5px; color: var(--muted); padding: 6px 10px; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(30, 42, 47, .14); }
+.group .help { font-size: 13px; color: var(--muted); min-height: 2.6em; }
+.field-row { display: flex; gap: 8px; }
+.field-row > * { flex: 1; min-width: 0; }
+.field-row > input { flex: 0 0 104px; }
+input[type=text], select, textarea { background: var(--sunk); border: 1px solid transparent; border-radius: 10px; padding: 10px 12px; width: 100%; min-height: 44px; }
+input[type=text]:focus, select:focus, textarea:focus { border-color: var(--accent); outline: none; }
+.fine { font-size: 13px; color: var(--muted); margin: 0; max-width: 80ch; }
+
+.cta-bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-top: 1px solid var(--line); display: flex; justify-content: center; align-items: center; gap: 16px; flex-wrap: wrap; z-index: 5; }
+.btn { border: 0; border-radius: 12px; min-height: 44px; padding: 10px 20px; font-weight: 700; background: var(--accent); color: var(--accent-ink); }
+.btn.big { min-height: 54px; padding: 12px 28px; font-size: 17px; border-radius: 14px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+.btn.ghost:hover { border-color: var(--muted); }
+.cta-meta { font-size: 14px; color: var(--muted); }
+
+/* ---------- Sesión ---------- */
+.session { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+@media (max-width: 920px) { .session { grid-template-columns: 1fr; } }
+.stage { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; }
+.stage-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 18px 8px; }
+.ctx { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctx b { font-family: var(--font-display); font-size: 17px; }
+.ctx span { color: var(--muted); font-size: 13.5px; margin-left: 6px; }
+.top-actions { display: flex; gap: 8px; align-items: center; }
+.toggle { min-height: 40px; border: 1.5px solid var(--line); background: var(--surface); border-radius: 10px; padding: 6px 12px; font-weight: 600; font-size: 13.5px; }
+.toggle[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.timebar { margin: 0 18px; height: 6px; border-radius: 3px; background: var(--sunk); overflow: hidden; }
+.timebar span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 1s linear; }
+.timebar.over span { background: var(--mid); }
+.timetext { margin: 4px 18px 0; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; display: flex; justify-content: space-between; gap: 10px; }
+.persona { display: grid; justify-items: center; gap: 4px; padding: 14px 18px 4px; text-align: center; }
+.pname { font-family: var(--font-display); font-size: 22px; font-weight: 700; margin-top: 4px; }
+.emo { font-size: 15px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; justify-content: center; }
+.emo b { font-family: var(--font-display); font-size: 22px; font-variant-numeric: tabular-nums; }
+.delta { font-size: 13px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+.delta.up { background: color-mix(in srgb, var(--high) 16%, transparent); color: var(--high); }
+.delta.down { background: color-mix(in srgb, var(--calm) 16%, transparent); color: var(--calm); }
+.emo-why { font-size: 13px; color: var(--muted); min-height: 1.4em; }
+.mine { margin: 6px auto 0; padding: 0 22px; max-width: 600px; min-height: 1.5em; text-align: center; color: var(--muted); font-style: italic; font-size: 16px; }
+.caption { margin: 8px auto 0; padding: 0 22px; max-width: 640px; min-height: 2.9em; text-align: center; font-size: 20px; line-height: 1.45; color: var(--ink); font-family: var(--font-body); }
+.caption.mine { color: var(--muted); font-style: italic; font-size: 17px; }
+.toast { margin: 10px auto 0; max-width: 560px; background: var(--hint); border: 1px solid var(--hint-line); border-radius: 12px; padding: 10px 14px; font-size: 14.5px; display: flex; gap: 10px; align-items: flex-start; text-align: left; }
+.toast b { color: var(--ink); flex: none; }
+.toast button { margin-left: auto; background: none; border: 0; color: var(--muted); font-size: 18px; line-height: 1; padding: 0 2px; min-width: 28px; min-height: 28px; }
+.dock { position: sticky; bottom: 0; margin-top: auto; padding: 16px 18px 18px; display: grid; justify-items: center; gap: 8px; background: linear-gradient(to bottom, transparent, var(--surface) 22%); }
+.vstatus { font-weight: 700; font-size: 15.5px; text-align: center; }
+.vsub { font-size: 13px; color: var(--muted); text-align: center; }
+.mic { width: 84px; height: 84px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; position: relative; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+.mic svg { width: 34px; height: 34px; }
+.mic.listening { background: var(--high); box-shadow: 0 6px 18px color-mix(in srgb, var(--high) 35%, transparent); }
+.mic.listening::after { content: ""; position: absolute; inset: -8px; border-radius: 50%; border: 3px solid var(--high); animation: pulse 1.2s ease-out infinite; }
+.mic:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+.linkbtn { background: none; border: 0; color: var(--accent); text-decoration: underline; font-size: 13.5px; min-height: 32px; }
+.composer { width: 100%; max-width: 680px; display: grid; gap: 8px; }
+.composer textarea { min-height: 64px; resize: vertical; }
+.composer .actions { display: flex; gap: 8px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+
+.transcript { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; display: flex; flex-direction: column; max-height: calc(100vh - 110px); position: sticky; top: 12px; }
+@media (max-width: 920px) { .transcript { position: static; max-height: none; } }
+.tp-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.tp-head h2 { font-size: 16px; }
+.log { padding: 14px 16px; overflow-y: auto; display: grid; gap: 10px; align-content: start; }
+.msg { font-size: 14px; line-height: 1.45; }
+.msg .who { font-size: 12px; font-weight: 700; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.msg.patient .who { color: var(--accent); }
+.msg.pro { padding-left: 10px; border-left: 3px solid var(--line); }
+.msg.hint { background: var(--hint); border-radius: 8px; padding: 6px 9px; font-size: 13px; }
+.msg.sys { color: var(--muted); font-size: 13px; font-style: italic; }
+.typing { color: var(--muted); font-size: 13px; font-style: italic; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.modal { position: fixed; inset: 0; background: rgba(20, 27, 30, .45); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.dialog { background: var(--surface); border-radius: 18px; padding: 24px; max-width: 420px; width: 100%; display: grid; gap: 12px; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+.dialog h2 { font-size: 21px; }
+.dialog p { margin: 0; color: var(--muted); }
+.dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 6px; }
+
+/* ---------- Informe ---------- */
+.report { display: grid; gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 20px; }
+.r-head { display: grid; grid-template-columns: 132px 1fr; gap: 20px; align-items: center; }
+@media (max-width: 560px) { .r-head { grid-template-columns: 1fr; justify-items: start; } }
+.r-head h1 { font-size: 26px; }
+.r-meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.r-sum { margin: 10px 0 12px; font-size: 16px; max-width: 70ch; }
+.bars { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 18px; }
+.bar-item .lbl { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; }
+.bar-item .lbl span:last-child { font-variant-numeric: tabular-nums; color: var(--muted); }
+.bar-item .bar { height: 8px; border-radius: 4px; background: var(--sunk); margin-top: 5px; overflow: hidden; }
+.bar-item .bar span { display: block; height: 100%; background: var(--accent); }
+.bar-item.pen .lbl span:last-child { color: var(--high); }
+.next { background: var(--accent); color: var(--accent-ink); border-radius: 18px; padding: 22px 24px; display: grid; gap: 8px; }
+.next .k { font-size: 12.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; opacity: .85; }
+.next .moment { opacity: .9; font-style: italic; }
+.next .say { font-family: var(--font-display); font-size: clamp(21px, 2.6vw, 27px); font-weight: 700; line-height: 1.25; }
+.next .why { opacity: .9; font-size: 14.5px; }
+.fw { display: grid; gap: 12px; }
+.fw h2 { font-size: 18px; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.fw h2 small { font-family: var(--font-body); font-size: 13px; color: var(--muted); font-weight: 500; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
+.tile { min-height: 96px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); padding: 10px 8px; display: grid; justify-items: center; align-content: center; gap: 2px; text-align: center; }
+.tile .L { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1; }
+.tile .n { font-size: 12.5px; font-weight: 600; }
+.tile .st { font-size: 11.5px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+.tile.s2 { background: var(--accent-soft); border-color: var(--accent); }
+.tile.s2 .L { color: var(--accent); }
+.tile.s1 { background: var(--surface); border-style: solid; }
+.tile.s0 { background: var(--sunk); border-style: dashed; }
+.tile.s0 .L { color: var(--muted); }
+.tile[aria-expanded="true"] { box-shadow: 0 0 0 3px var(--accent); }
+.pips { display: inline-flex; gap: 3px; }
+.pips i { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--accent); }
+.pips i.on { background: var(--accent); }
+.detail { background: var(--sunk); border-radius: 12px; padding: 12px 14px; font-size: 14.5px; display: grid; gap: 4px; }
+.detail .q { font-style: italic; }
+.detail .q.none { color: var(--muted); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+.grid2 > .card { display: grid; gap: 10px; align-content: start; }
+.card h2 { font-size: 17px; }
+ul.clean { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.improve { border-left: 3px solid var(--accent); padding: 8px 12px; background: var(--sunk); border-radius: 0 10px 10px 0; display: grid; gap: 4px; font-size: 14.5px; }
+.improve .alt { font-weight: 700; }
+.pen-list { display: flex; gap: 6px; flex-wrap: wrap; }
+.pen-list .chip { background: color-mix(in srgb, var(--high) 14%, transparent); color: var(--high); }
+.history { display: flex; align-items: end; gap: 8px; height: 90px; padding-top: 18px; }
+.history div { flex: 0 0 30px; background: var(--accent-soft); border-radius: 6px 6px 0 0; position: relative; }
+.history div.last { background: var(--accent); }
+.history span { position: absolute; top: -18px; left: 0; right: 0; text-align: center; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.scale { display: flex; gap: 6px; flex-wrap: wrap; }
+.scale button { width: 44px; height: 44px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface); font-weight: 700; }
+.scale button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.muted { color: var(--muted); font-size: 13px; }
+.actions-row { display: flex; gap: 10px; flex-wrap: wrap; }
+details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
+
+/* ===== Rediseño UX ===== */
+.setup { gap: 36px; }
+.intro { display: grid; gap: 6px; }
+.step { display: grid; gap: 16px; }
+.step-h { display: flex; align-items: center; gap: 12px; }
+.step-h h2 { font-size: 22px; }
+.step-n { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 16px; flex: none; }
+.who-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: stretch; }
+.role-seg { flex: 1 1 520px; }
+.role-seg button { min-height: 52px; font-size: 15.5px; }
+.alias-f { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px 6px 4px 14px; }
+.alias-f label { font-size: 13px; font-weight: 700; color: var(--muted); }
+.alias-f input { width: 130px; min-height: 42px; }
+.fw-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; min-height: 30px; }
+.fw-chip { background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 13.5px; padding: 4px 12px; border-radius: 999px; animation: chipIn .35s ease; }
+.plus { color: var(--muted); font-weight: 700; }
+@keyframes chipIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+.case-grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+.case { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 44px 20px 22px; grid-template-columns: none; transition: border-color .2s, box-shadow .2s, transform .2s, opacity .2s; }
+.case:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(30, 42, 47, .10); }
+.case[aria-pressed="true"] { box-shadow: 0 0 0 4px var(--accent-soft), 0 12px 30px rgba(14, 106, 112, .16); }
+.case .avatar-wrap { width: 128px; height: 128px; margin-bottom: 8px; }
+.case .avatar-wrap .face { inset: 11px; }
+.case .scene { margin: 2px 0 8px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.case .chips { justify-content: center; margin-top: auto; }
+.case .fit { position: absolute; top: 14px; left: 14px; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--sunk); color: var(--muted); }
+.case.rec .fit { background: var(--accent); color: var(--accent-ink); }
+.case.all .fit { background: var(--accent-soft); color: var(--accent); }
+.case.off { opacity: .62; }
+.case.off:hover, .case.off[aria-pressed="true"] { opacity: 1; }
+.options { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+
+/* Escenario de la sesión */
+.stage { position: relative; isolation: isolate; }
+.stage::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 70%; z-index: -1; pointer-events: none; color: var(--emo, var(--accent)); background: radial-gradient(70% 80% at 50% 0%, currentColor, transparent 72%); opacity: .14; transition: color .9s ease; }
+@media (min-width: 921px) { .stage { min-height: calc(100vh - 92px); } .transcript { max-height: calc(100vh - 92px); } }
+.persona { padding-top: 26px; gap: 6px; }
+.avatar-wrap.big { width: 216px; height: 216px; }
+.avatar-wrap.big .face { inset: 18px; }
+.avatar-wrap.big .ring circle:last-child { transition: stroke-dasharray .6s ease, stroke .6s ease; }
+.pname { font-size: 26px; }
+.meter { position: relative; width: 300px; max-width: 80%; height: 8px; border-radius: 4px; margin-top: 6px; background: linear-gradient(90deg, var(--calm), var(--mid) 50%, var(--high)); opacity: .9; }
+.meter-dot { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; border-radius: 50%; border: 3px solid var(--surface); transform: translate(-50%, -50%); box-shadow: 0 2px 8px rgba(0, 0, 0, .25); transition: left .7s cubic-bezier(.3, 1.4, .5, 1), background-color .6s; }
+.meter-scale { width: 300px; max-width: 80%; display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); }
+.caption { position: relative; margin: 24px auto 0; padding: 18px 26px; max-width: 660px; min-height: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 8px 26px rgba(30, 42, 47, .08); font-size: 21px; animation: bubbleIn .35s ease; }
+.caption::before { content: ""; position: absolute; top: -9px; left: 50%; width: 16px; height: 16px; background: var(--surface); border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: translateX(-50%) rotate(45deg); }
+.caption:empty { display: none; }
+@keyframes bubbleIn { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
+.mine:empty { display: none; }
+.mine { margin-top: 12px; }
+.dock { background: linear-gradient(to bottom, transparent, var(--surface) 30%); }
+.composer textarea { background: var(--surface); border: 1.5px solid var(--line); border-radius: 14px; box-shadow: 0 4px 14px rgba(30, 42, 47, .05); }
+.composer textarea:focus { border-color: var(--accent); }
+.transcript .log { scroll-behavior: smooth; }
+.msg.patient { animation: bubbleIn .3s ease; }
+@media (max-width: 920px) { .avatar-wrap.big { width: 168px; height: 168px; } }
+@media (max-width: 640px) { .case { display: grid; grid-template-columns: 88px 1fr; column-gap: 14px; row-gap: 2px; text-align: left; align-items: start; padding: 44px 16px 16px; } .case .avatar-wrap { grid-row: 1 / span 4; width: 88px; height: 88px; margin: 0; } .case .avatar-wrap .face { inset: 8px; } .case .chips { justify-content: flex-start; } .case .scene { margin: 2px 0 6px; } }
+@media (max-width: 640px) { .role-seg { flex-basis: 100%; } .role-seg button { font-size: 13.5px; padding: 6px 6px; } .alias-f { flex: 1; } }
+
+/* ===== Inicio en una sola pantalla ===== */
+main { padding-bottom: 24px; max-width: 1240px; }
+.setup { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+.setup-main { display: grid; gap: 22px; min-width: 0; }
+.setup .hero { font-size: clamp(28px, 2.6vw, 36px); }
+.setup .lede { font-size: 15px; }
+.setup .step { gap: 12px; }
+.setup .step-h h2 { font-size: 19px; }
+.setup .step-n { width: 28px; height: 28px; font-size: 14px; }
+.role-seg { flex: 1 1 420px; }
+.role-seg button { min-height: 46px; font-size: 14.5px; }
+.alias-f input { width: 110px; min-height: 38px; }
+.setup .case-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.setup .case { display: grid; grid-template-columns: 96px 1fr; column-gap: 16px; row-gap: 2px; text-align: left; align-items: start; padding: 40px 18px 16px; }
+.setup .case .avatar-wrap { grid-row: 1 / span 4; width: 96px; height: 96px; margin: 0; }
+.setup .case .avatar-wrap .face { inset: 9px; }
+.setup .case .chips { justify-content: flex-start; margin-top: 4px; }
+.setup .case .scene { -webkit-line-clamp: 2; margin: 2px 0 4px; font-size: 14px; }
+.setup .case .who { font-size: 20px; }
+.setup .fine { font-size: 12px; }
+.setup-side { position: sticky; top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px; display: grid; gap: 14px; }
+.setup-side .group { gap: 6px; }
+.setup-side .seg button { min-height: 40px; font-size: 14px; padding: 4px 8px; }
+.setup-side .help { min-height: 0; font-size: 12.5px; }
+.setup-side .help:empty { display: none; }
+.setup-side .field-row select { min-height: 40px; }
+.setup-side .field-row .btn { min-height: 40px; padding: 6px 14px; }
+.hint-i { font-weight: 500; color: var(--muted); }
+.side-cta { display: grid; gap: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.side-cta .btn.big { width: 100%; margin-top: 8px; }
+.side-cta .cta-meta { text-align: center; font-size: 12.5px; }
+@media (max-width: 1000px) {
+  .setup { grid-template-columns: 1fr; }
+  .setup-side { position: static; }
+}
+@media (max-width: 640px) {
+  .setup .case-grid { grid-template-columns: 1fr; }
+  .setup .case { grid-template-columns: 80px 1fr; }
+  .setup .case .avatar-wrap { width: 80px; height: 80px; }
+  .side-cta { position: sticky; bottom: 0; background: var(--surface); padding-bottom: 6px; }
+}
+
+/* compactación para caber en una pantalla */
+.setup-main { gap: 16px; }
+.setup .hero { font-size: clamp(26px, 2.3vw, 32px); }
+.setup .lede { margin-top: 2px; }
+.setup .step { gap: 10px; }
+.setup .who-row { gap: 12px; }
+.role-seg button { min-height: 42px; }
+.setup .case { padding: 14px 16px; grid-template-columns: 88px 1fr; }
+.setup .case .avatar-wrap { width: 88px; height: 88px; grid-row: 1 / span 4; }
+.setup .case .avatar-wrap .face { inset: 8px; }
+.setup .case .title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 11.5px; }
+.setup .case .fit { position: static; font-size: 10.5px; letter-spacing: 0; text-transform: none; padding: 2px 8px; }
+.setup .case .who { font-size: 19px; }
+.setup .case .chip { font-size: 12px; }
+.setup .case .check { top: 10px; right: 10px; width: 24px; height: 24px; }
+.setup-side { gap: 12px; padding: 16px 18px; }
+.setup-side .step-h h2 { font-size: 18px; }
+.setup-side .fine { font-size: 11.5px; line-height: 1.4; }
+.side-cta .btn.big { min-height: 50px; }
+
+@media (min-width: 1001px) and (max-height: 760px) {
+  .setup .lede { display: none; }
+  .setup .case .scene { -webkit-line-clamp: 1; }
+  .setup .case { padding: 10px 14px; }
+  .setup .case .avatar-wrap { width: 76px; height: 76px; }
+  .setup-side { gap: 9px; padding: 14px 16px; }
+  .setup-side .seg button { min-height: 36px; }
+  .side-cta .btn.big { min-height: 46px; margin-top: 4px; }
+  .setup-side .fine { display: none; }
+  .setup .fine-left { display: block; }
+}
+.setup .fine-left { display: none; font-size: 11.5px; }
+
+/* Solo se iluminan los casos que aplican al estamento */
+.case.off { opacity: .42; filter: grayscale(1); cursor: not-allowed; box-shadow: none; }
+.case.off:hover { transform: none; box-shadow: none; border-color: var(--line); opacity: .42; }
+.case.off .fit { background: var(--sunk); color: var(--muted); }
+.case.rec .fit { background: var(--accent); color: var(--accent-ink); }
+
+.sbar { width: 140px; height: 4px; border-radius: 2px; background: var(--sunk); overflow: hidden; opacity: 0; transition: opacity .2s; }
+.sbar.on { opacity: 1; }
+.sbar span { display: block; height: 100%; width: 0; background: var(--accent); }
+
+/* Sin movimientos en la cara: solo cambian la expresión y el indicador de estado */
+.avatar-wrap .face svg .blink { animation: none !important; }
+.avatar-wrap .talk, .avatar-wrap.speaking .talk { animation: none !important; opacity: 0 !important; }
+.avatar-wrap .face { animation: none !important; }
+.avatar-wrap.speaking::after { display: none; }
+.caption, .msg.patient, .fw-chip { animation: none !important; }
+.case:hover { transform: none; }
+
+.autosend { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); cursor: pointer; }
+.autosend input { width: 16px; height: 16px; accent-color: var(--accent); }
+
+/* Sesión: todo dentro de la pantalla, micrófono siempre visible */
+.avatar-wrap.big { width: clamp(120px, 21vh, 216px); height: clamp(120px, 21vh, 216px); }
+.avatar-wrap.big .face { inset: 8%; }
+.persona { padding-top: 12px; }
+.caption { margin-top: 18px; font-size: 19px; padding: 14px 22px; }
+#voiceDock { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "mic status opt" "mic sub link" "mic bar link"; align-items: center; justify-items: start; gap: 2px 18px; padding: 14px 22px 16px; border-top: 1px solid var(--line); background: var(--surface); margin-top: auto; }
+#voiceDock .mic { grid-area: mic; width: 68px; height: 68px; }
+#voiceDock .mic svg { width: 28px; height: 28px; }
+#voiceDock .vstatus { grid-area: status; text-align: left; }
+#voiceDock .vsub { grid-area: sub; text-align: left; }
+#voiceDock .sbar { grid-area: bar; }
+#voiceDock .autosend { grid-area: opt; justify-self: end; }
+#voiceDock #toText { grid-area: link; justify-self: end; }
+@media (max-width: 640px) { #voiceDock { grid-template-columns: auto 1fr; grid-template-areas: "mic status" "mic sub" "mic bar" "opt opt" "link link"; } }
+@media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; transition: none !important; } }
+@media (max-width: 640px) { .ctx span { display: none; } .toggle { font-size: 12.5px; padding: 6px 9px; } }
+@media (max-width: 480px) { .case .avatar-wrap { width: 104px; height: 104px; } .caption { font-size: 18px; } }
+
+/* ===== Web: acceso, navegación, historial y panel ===== */
+.user-box { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.user-box .who-chip { font-weight: 700; font-size: 13px; background: var(--accent-soft); color: var(--accent); padding: 5px 12px; border-radius: 999px; }
+#userNav { display: flex; gap: 4px; flex-wrap: wrap; }
+#userNav button { border: 0; background: transparent; color: var(--muted); font-weight: 600; font-size: 13.5px; min-height: 36px; padding: 6px 10px; border-radius: 8px; }
+#userNav button:hover { background: var(--sunk); color: var(--ink); }
+#userNav button[aria-current="true"] { background: var(--sunk); color: var(--ink); }
+.auth { max-width: 460px; margin: 40px auto; display: grid; gap: 16px; }
+.auth .card { display: grid; gap: 14px; padding: 28px; }
+.auth h1 { font-size: 28px; }
+.auth p { margin: 0; color: var(--muted); }
+.auth label { font-size: 13px; font-weight: 700; color: var(--muted); display: grid; gap: 6px; }
+.auth input[type=email] { background: var(--sunk); border: 1px solid transparent; border-radius: 10px; padding: 12px; min-height: 48px; font-size: 16px; }
+.auth input[type=email]:focus { border-color: var(--accent); outline: none; }
+.form-msg { font-size: 14px; color: var(--high); min-height: 1.2em; }
+.form-msg.ok { color: var(--accent); }
+.consent { max-width: 720px; margin: 24px auto; display: grid; gap: 16px; }
+.consent .card { display: grid; gap: 12px; }
+.consent ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.check-row { display: flex; gap: 10px; align-items: flex-start; font-weight: 600; }
+.check-row input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent); }
+.page { display: grid; gap: 16px; }
+.page-h { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; }
+.page-h h1 { font-size: 28px; }
+.table-card { overflow-x: auto; padding: 8px; }
+.dtable { width: 100%; border-collapse: collapse; font-size: 14px; }
+.dtable th, .dtable td { text-align: left; padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
+.dtable th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.btn.small { min-height: 36px; padding: 6px 12px; font-size: 13.5px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 2px; }
+.stat b { font-family: var(--font-display); font-size: 30px; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 13px; color: var(--muted); }
+.invite-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.invite-row input { flex: 1 1 260px; background: var(--sunk); border: 1px solid transparent; border-radius: 10px; padding: 10px 12px; min-height: 44px; }
+.danger-zone { border-color: color-mix(in srgb, var(--high) 40%, var(--line)); }
+.btn.danger { background: var(--high); color: #fff; }
+.alias-show { font-weight: 700; color: var(--accent); }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand" id="brand" role="button" tabindex="0" title="Volver al inicio" style="cursor:pointer"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#FFFDFA" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>Simulador de empatía · Urgencias</div>
+  <div class="top-right">
+    <div class="theme-seg" id="themeSeg" role="group" aria-label="Tema de la pantalla">
+      <button type="button" data-t="light" aria-pressed="false" title="Fondo claro"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><span>Claro</span></button>
+      <button type="button" data-t="dark" aria-pressed="false" title="Fondo oscuro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg><span>Oscuro</span></button>
+      <button type="button" data-t="auto" aria-pressed="false" title="Como el sistema"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8.5 20h7M12 16.5V20"/></svg><span>Auto</span></button>
+    </div>
+    <span class="pill"><i></i>Simulación con IA</span>
+    <div class="user-box hidden" id="userBox">
+      <span class="who-chip" id="userPseudo" title="Tu seudónimo"></span>
+      <nav id="userNav" aria-label="Menú">
+        <button type="button" id="navPractice" data-nav="viewSetup">Practicar</button>
+        <button type="button" id="navHistory" data-nav="viewHistory">Mis sesiones</button>
+        <button type="button" id="navAdmin" data-nav="viewAdmin" class="hidden">Panel de Docencia</button>
+        <button type="button" id="navLogout">Salir</button>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div id="aiNotice" class="notice hidden"></div>
+
+  <!-- ACCESO -->
+  <section id="viewLogin" class="auth hidden">
+    <div class="card">
+      <h1>Entra en el simulador</h1>
+      <p>Escribe el email con el que te dieron de alta. Te enviaremos un enlace de acceso; no necesitas contraseña.</p>
+      <form id="loginForm" class="auth" style="margin:0; gap:12px" novalidate>
+        <label for="loginEmail">Email
+          <input type="email" id="loginEmail" autocomplete="email" inputmode="email" required>
+        </label>
+        <button class="btn big" id="loginBtn" type="submit">Enviarme el enlace</button>
+        <div class="form-msg" id="loginMsg" role="alert"></div>
+      </form>
+      <div id="loginSent" class="hidden" style="display:grid; gap:10px">
+        <p class="form-msg ok" style="font-weight:700">Revisa tu correo</p>
+        <p>Hemos enviado un enlace a <b id="sentTo"></b>. Ábrelo en este mismo dispositivo para entrar. Si no llega en unos minutos, mira en la carpeta de spam.</p>
+        <button class="btn ghost" id="loginAgain" type="button">Usar otro email</button>
+      </div>
+    </div>
+    <p class="fine" style="text-align:center">Piloto de formación en comunicación clínica. Acceso solo para participantes invitados por Docencia.</p>
+  </section>
+
+  <!-- CONSENTIMIENTO -->
+  <section id="viewConsent" class="consent hidden">
+    <h1 class="hero" style="font-size:32px">Antes de empezar</h1>
+    <div class="card">
+      <h2 style="font-size:18px">Qué es este simulador</h2>
+      <ul>
+        <li>Hablarás con <b>personajes ficticios generados por inteligencia artificial</b>. No son personas reales.</li>
+        <li>Al terminar cada sesión, una IA evalúa tu comunicación con marcos validados (SPIKES, Calgary-Cambridge, AIDET, HEARD, NURSE y CARE).</li>
+        <li>Las puntuaciones son <b>formativas</b>: no se usan para evaluar tu desempeño laboral.</li>
+      </ul>
+      <h2 style="font-size:18px">Qué datos se guardan</h2>
+      <ul>
+        <li>Tu email, solo para darte acceso. En los resultados apareces con un seudónimo.</li>
+        <li>La transcripción de tus sesiones, las puntuaciones y tu valoración, para que veas tu evolución y para evaluar el piloto.</li>
+        <li><b>El audio de tu voz no se guarda</b>: se transcribe y se descarta.</li>
+        <li>Los datos se alojan en servidores de la Unión Europea. La IA y la voz las procesan Anthropic y OpenAI.</li>
+        <li>Puedes eliminar tu cuenta y todas tus sesiones en cualquier momento desde "Mis sesiones".</li>
+        <li>No introduzcas nunca datos de pacientes reales.</li>
+      </ul>
+      <label class="check-row"><input type="checkbox" id="consentChk"> He leído esta información y acepto participar en el piloto.</label>
+      <div class="actions-row">
+        <button class="btn" id="consentBtn" type="button" disabled>Aceptar y continuar</button>
+        <button class="btn ghost" id="consentNo" type="button">Ahora no</button>
+      </div>
+      <div class="form-msg" id="consentMsg" role="alert"></div>
+    </div>
+  </section>
+
+  <!-- MIS SESIONES -->
+  <section id="viewHistory" class="page hidden">
+    <div class="page-h"><h1>Mis sesiones</h1></div>
+    <div class="card"><h2 style="font-size:17px">Tu evolución</h2><div class="history" id="histChart" style="margin-top:8px"></div></div>
+    <div id="histList"></div>
+    <div class="card danger-zone" style="display:grid; gap:10px">
+      <h2 style="font-size:17px">Eliminar mi cuenta</h2>
+      <p class="muted" style="margin:0">Se borran tu acceso, tu seudónimo y todas tus sesiones. No se puede deshacer.</p>
+      <div><button class="btn danger" id="deleteMe" type="button">Eliminar mi cuenta y mis datos</button></div>
+    </div>
+  </section>
+
+  <!-- PANEL DE DOCENCIA -->
+  <section id="viewAdmin" class="page hidden">
+    <div class="page-h"><h1>Panel de Docencia</h1><button class="btn ghost" id="exportCsv" type="button">Exportar sesiones (CSV)</button></div>
+    <div class="stats" id="adminStats"></div>
+    <div class="card" style="display:grid; gap:10px">
+      <h2 style="font-size:17px">Dar de alta a un participante</h2>
+      <form id="inviteForm" class="invite-row" novalidate>
+        <label class="sr-only" for="inviteEmail">Email del participante</label>
+        <input type="email" id="inviteEmail" placeholder="nombre@ejemplo.com" autocomplete="off">
+        <button class="btn" id="inviteBtn" type="submit">Enviar invitación</button>
+      </form>
+      <div class="muted" id="inviteMsg" role="status"></div>
+    </div>
+    <div class="card table-card"><h2 style="font-size:17px; padding:8px">Participantes</h2><div id="adminUsers"></div></div>
+    <div class="card table-card"><h2 style="font-size:17px; padding:8px">Sesiones (por seudónimo)</h2><div id="adminSessions"></div></div>
+  </section>
+
+
+  <!-- CONFIGURAR -->
+  <section id="viewSetup" class="setup hidden">
+    <div class="setup-main">
+      <div class="intro">
+        <h1 class="hero">¿A quién vas a atender hoy?</h1>
+        <p class="lede">Tres pasos y entras al box: sesiones de 8 a 12 minutos con informe al final.</p>
+      </div>
+
+      <div class="step">
+        <div class="step-h"><span class="step-n" aria-hidden="true">1</span><h2>¿Quién eres?</h2></div>
+        <div class="who-row">
+          <div class="seg role-seg" id="roleSeg" role="group" aria-label="Estamento"></div>
+          <div class="alias-f">
+            <span class="group-label" style="margin:0">Tu seudónimo</span>
+            <span class="alias-show" id="aliasShow">—</span>
+            <input type="hidden" id="alias" value="">
+          </div>
+        </div>
+        <select id="role" class="hidden" aria-hidden="true" tabindex="-1">
+          <option>Médico residente</option>
+          <option>Médico adjunto</option>
+          <option>Enfermería / TCAE</option>
+          <option>Admisión / atención al paciente</option>
+        </select>
+        <div class="fw-line" id="roleHelp"></div>
+      </div>
+
+      <div class="step">
+        <div class="step-h"><span class="step-n" aria-hidden="true">2</span><h2>Elige a quién atiendes</h2></div>
+        <div class="case-grid" id="cases"></div>
+      </div>
+      <p class="fine fine-left">Casos ficticios generados con IA. No introduzcas datos de pacientes reales. Puntuación formativa: no evalúa tu desempeño laboral.</p>
+    </div>
+
+    <aside class="setup-side" aria-label="Ajustes de la sesión">
+      <div class="step-h"><span class="step-n" aria-hidden="true">3</span><h2>Ajusta la sesión</h2></div>
+      <div class="group">
+        <span class="group-label" id="lblProv">Modelo de IA</span>
+        <div class="seg" id="providerSeg" role="group" aria-labelledby="lblProv"></div>
+        <div class="help" id="providerHelp"></div>
+      </div>
+      <div class="group">
+        <span class="group-label" id="lblLevel">Nivel</span>
+        <div class="seg" id="levelSeg" role="group" aria-labelledby="lblLevel"></div>
+        <div class="help" id="levelHelp"></div>
+      </div>
+      <div class="group">
+        <span class="group-label" id="lblMode">Cómo quieres hablar</span>
+        <div class="seg" id="modeSeg" role="group" aria-labelledby="lblMode"></div>
+        <div class="help" id="modeHelp"></div>
+      </div>
+      <div class="group">
+        <span class="group-label" id="lblLang">Idioma <span class="hint-i">· informe en castellano</span></span>
+        <div class="seg" id="langSeg" role="group" aria-labelledby="lblLang"></div>
+      </div>
+      <div class="group">
+        <label class="group-label" for="voiceSel">Voz</label>
+        <div class="field-row"><select id="voiceSel"></select><button class="btn ghost" id="voiceTest" type="button" style="flex:0 0 auto">Probar</button></div>
+        <div class="help" id="voiceHelp"></div>
+      </div>
+      <div class="side-cta">
+        <button class="btn big" id="startBtn" type="button">Entrar al box</button>
+        <span class="cta-meta" id="ctaMeta"></span>
+      </div>
+      <p class="fine">Casos ficticios generados con IA. No introduzcas datos de pacientes reales. Puntuación formativa: no evalúa tu desempeño laboral.</p>
+    </aside>
+  </section>
+
+  <!-- SESIÓN -->
+  <section id="viewSession" class="hidden">
+    <div class="session">
+      <div class="stage">
+        <div class="stage-top">
+          <div class="ctx"><b id="sTitle"></b><span id="sMeta"></span></div>
+          <div class="top-actions">
+            <button class="toggle" id="ttsBtn" type="button" aria-pressed="true">Voz: sí</button>
+            <button class="btn ghost" id="endBtn" type="button">Finalizar</button>
+          </div>
+        </div>
+        <div class="timebar" id="timebar"><span id="timeFill"></span></div>
+        <div class="timetext"><span><span id="clock">00:00</span> de <span id="limit"></span></span><span id="timeMsg"></span></div>
+
+        <div class="persona">
+          <div class="avatar-wrap big" id="avatarWrap"></div>
+          <div class="pname" id="pName"></div>
+          <div class="emo"><span id="emoLabel"></span><span><b id="emoVal"></b> / 10</span><span id="emoDelta" class="delta hidden"></span></div>
+          <div class="meter" aria-hidden="true"><span class="meter-dot" id="meterDot"></span></div>
+          <div class="meter-scale" aria-hidden="true"><span>Tranquilo</span><span>Tenso</span><span>Muy alterado</span></div>
+          <div class="emo-why" id="emoWhy"></div>
+        </div>
+        <div class="caption" id="caption" aria-live="polite"></div>
+        <div class="mine" id="mine"></div>
+        <div class="toast hidden" id="toast" role="status"><b>Pista</b><span id="toastText"></span><button type="button" id="toastClose" aria-label="Cerrar pista">×</button></div>
+
+        <div class="dock" id="voiceDock">
+          <div class="vstatus" id="vStatus" aria-live="polite"></div>
+          <button class="mic" id="bigMic" type="button" aria-label="Hablar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg>
+          </button>
+          <div class="sbar" id="sbar" aria-hidden="true"><span></span></div>
+          <label class="autosend"><input type="checkbox" id="autoSend"> Enviar solo al hacer una pausa</label>
+          <div class="vsub" id="vSub"></div>
+          <button class="linkbtn" id="toText" type="button">Prefiero escribir</button>
+        </div>
+
+        <div class="dock hidden" id="textDock">
+          <div class="composer">
+            <label for="input" class="sr-only">Tu respuesta</label>
+            <textarea id="input" placeholder="Escribe lo que le dirías… (Intro envía · Mayús+Intro, salto de línea)"></textarea>
+            <div class="actions">
+              <div style="display:flex; gap:8px; align-items:center">
+                <button class="toggle hidden" id="micBtn" type="button">Dictar</button>
+                <button class="linkbtn hidden" id="toVoice" type="button">Volver a hablar</button>
+                <span id="micState" class="muted"></span>
+              </div>
+              <button class="btn" id="sendBtn" type="button">Enviar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="transcript" aria-label="Transcripción">
+        <div class="tp-head"><h2>Transcripción</h2><span class="chip" id="hintCount">0 pistas</span></div>
+        <div class="log" id="log" aria-live="off"></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- INFORME -->
+  <section id="viewReport" class="report hidden"></section>
+</main>
+
+<div class="hidden" id="ctaBar"></div>
+
+<div class="modal hidden" id="delConfirm">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+    <h2 id="dTitle">¿Eliminar tu cuenta?</h2>
+    <p>Se borrarán tu acceso, tu seudónimo y todas tus sesiones e informes. Esta acción no se puede deshacer.</p>
+    <div class="form-msg" id="delMsg"></div>
+    <div class="row">
+      <button class="btn ghost" id="delCancel" type="button">Cancelar</button>
+      <button class="btn danger" id="delOk" type="button">Sí, eliminar todo</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal hidden" id="confirm">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="cTitle">
+    <h2 id="cTitle">¿Qué quieres hacer?</h2>
+    <p id="cText">Puedes terminar y ver tu informe, o salir sin evaluar. Si sales, la conversación no se guarda.</p>
+    <div class="row">
+      <button class="btn ghost" id="cCancel" type="button">Seguir hablando</button>
+      <button class="btn ghost" id="cExit" type="button">Salir sin evaluar</button>
+      <button class="btn" id="cOk" type="button">Terminar y ver informe</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+/* ===== Conexión con el servidor (Supabase) y adaptadores de IA, voz y dictado ===== */
+const SB_URL = "https://gkdayvzuvkygttvptuit.supabase.co";
+const SB_KEY = "sb_publishable_Ffx9CfPiWedqOenXfXwCiA_ra6DXvT3";
+const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, detectSessionInUrl: true } });
+
+async function fnFetch(name, body, signal) {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) throw { code: "no_session", message: "Tu sesión ha caducado. Vuelve a entrar." };
+  const isForm = body instanceof FormData;
+  return fetch(`${SB_URL}/functions/v1/${name}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.access_token}`, apikey: SB_KEY, ...(isForm ? {} : { "Content-Type": "application/json" }) },
+    body: isForm ? body : JSON.stringify(body),
+    signal
+  });
+}
+async function fnJSON(name, body, signal) {
+  const res = await fnFetch(name, body, signal);
+  let data = {};
+  try { data = await res.json(); } catch (e) {}
+  if (!res.ok) throw { code: data.code || (res.status === 429 ? "rate_limited" : "server_error"), message: data.error || "Error del servidor", detail: data.detail };
+  return data;
+}
+
+/* IA: misma interfaz que usaba la demo (sample) */
+function makeSample() {
+  const sample = async (prompt, opts = {}) => {
+    const d = await fnJSON("llm", { prompt, tier: opts.modelTier || "default", provider: (typeof state !== "undefined" && state.provider) || "anthropic" }, opts.signal);
+    return { text: d.text || "", model: d.model };
+  };
+  return sample;
+}
+
+/* Voz del personaje: OpenAI TTS a través del servidor */
+const OPENAI_VOICES = ["ash", "onyx", "echo", "verse", "ballad", "coral", "sage", "shimmer", "nova", "alloy", "fable"];
+const LANG_NAME = { es: "castellano de España", ca: "catalán", en: "inglés británico" };
+function makeTTS() {
+  let audio = null, stateCb = () => {}, rejectCurrent = null;
+  return {
+    onState(f) { stateCb = f; },
+    stop() {
+      if (audio) { try { audio.pause(); } catch (e) {} audio = null; }
+      if (rejectCurrent) { const r = rejectCurrent; rejectCurrent = null; r({ code: "viewer_stopped" }); }
+      stateCb({ state: "idle", reason: "viewer_stopped" });
+    },
+    async speak(text, opts = {}) {
+      this.stop();
+      const c = currentCase();
+      const voice = OPENAI_VOICES.includes(opts.voice) ? opts.voice : (c.gender === "f" ? "coral" : "ash");
+      const instructions = `Eres ${c.name}${c.age ? ", de " + c.age + " años" : ""}. Habla en ${LANG_NAME[state.lang] || "castellano de España"}, con naturalidad, como una persona real en un servicio de Urgencias, no como un locutor. Emoción: ${c.emocion || "neutra"}, intensidad ${state.emotion ?? 5} de 10. Que se note la emoción en el tono, el ritmo y las pausas, sin exagerar.`;
+      const res = await fnFetch("tts", { text, voice, instructions });
+      if (!res.ok) throw { code: res.status === 429 ? "rate_limited" : "error" };
+      const url = URL.createObjectURL(await res.blob());
+      const a = new Audio(url);
+      audio = a;
+      stateCb({ state: "speaking" });
+      try {
+        await new Promise((resolve, reject) => {
+          rejectCurrent = reject;
+          a.onended = () => resolve();
+          a.onerror = () => reject({ code: "error" });
+          a.play().catch(() => reject({ code: "not_granted" }));
+        });
+      } finally {
+        rejectCurrent = null;
+        URL.revokeObjectURL(url);
+        if (audio === a) { audio = null; stateCb({ state: "idle", reason: "completed" }); }
+      }
+    }
+  };
+}
+
+/* Dictado: graba con el micrófono y transcribe en el servidor al terminar */
+function makeDictation() {
+  let rec = null, stream = null, chunks = [], tick = null, pending = null;
+  const cb = { s: () => {}, p: () => {}, f: () => {} };
+  const pickMime = () => ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
+  return {
+    onState(f) { cb.s = f; }, onPartial(f) { cb.p = f; }, onFinal(f) { cb.f = f; },
+    async start() {
+      if (rec && rec.state === "recording") return;
+      if (pending) await pending;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+      } catch (e) { throw { code: "not_granted" }; }
+      chunks = [];
+      const mime = pickMime();
+      rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+      rec.start(250);
+      const t0 = Date.now();
+      cb.s({ state: "listening" });
+      cb.p({ text: "Grabando…" });
+      tick = setInterval(() => cb.p({ text: `Grabando… ${Math.round((Date.now() - t0) / 1000)} s` }), 1000);
+    },
+    stop() {
+      if (pending) return pending;
+      if (!rec || rec.state !== "recording") return Promise.resolve();
+      pending = (async () => {
+        clearInterval(tick);
+        const r = rec;
+        await new Promise(res => { r.onstop = res; r.stop(); });
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        stream = null;
+        const blob = new Blob(chunks, { type: r.mimeType || "audio/webm" });
+        let text = "";
+        if (blob.size > 1500) {
+          cb.p({ text: "Transcribiendo…" });
+          try {
+            const fd = new FormData();
+            const ext = (r.mimeType || "").includes("mp4") ? "mp4" : (r.mimeType || "").includes("ogg") ? "ogg" : "webm";
+            fd.append("file", blob, "voz." + ext);
+            fd.append("lang", state.lang || "es");
+            text = ((await fnJSON("stt", fd)).text || "").trim();
+          } catch (e) { text = ""; }
+        }
+        cb.f({ text });
+        cb.s({ state: "idle", reason: "stopped" });
+      })();
+      try { return pending; } finally { pending.finally(() => { pending = null; }); }
+    }
+  };
+}
+
+window.claude = {
+  use: async name => {
+    if (name === "sample") return makeSample();
+    if (name === "tts") return makeTTS();
+    if (name === "dictation") return (navigator.mediaDevices && window.MediaRecorder) ? makeDictation() : null;
+    return null;
+  }
+};
+
+</script>
+<script>
+const LANGS = { es: "castellano", ca: "catalán", en: "inglés" };
+
+const CASES = [
+  {
+    id: "box",
+    title: "Seis horas en el box",
+    family: "Paciente o familiar enfadado",
+    type: "estructura",
+    name: "Javier",
+    descr: "Javier, 52 años, hijo de Carmen (88). Su madre lleva 6 horas en un box por fiebre y confusión y nadie le ha explicado nada.",
+    persona: "Javier, 52 años, hijo de Carmen (88 años). Estás en el pasillo de Urgencias, junto al box de tu madre.",
+    situacion: "Carmen lleva 6 horas en un box por fiebre y confusión. Le sacaron sangre hace 4 horas y desde entonces nadie os ha explicado nada. Estás cansado y enfadado.",
+    sabe: "Que le sacaron sangre hace 4 horas, que le pusieron un suero y que nadie ha vuelto a informar.",
+    noSabe: "Que la analítica ya ha salido y que hay sospecha de infección urinaria; que está pendiente una radiografía de tórax.",
+    clinica: "Analítica con leucocitosis y sedimento de orina compatible con infección urinaria; tratamiento antibiótico pendiente de iniciar; radiografía de tórax pendiente; probable ingreso o alta con antibiótico según evolución en las próximas horas.",
+    oculta: "Tu padre murió en este mismo hospital hace 3 años después de una espera muy larga en Urgencias. Tienes miedo de que a tu madre le pase lo mismo.",
+    emocion: "enfado",
+    inicio: 7,
+    dilema: "exiges hablar con el jefe de guardia y dices que vas a grabar con el móvil cómo os tratan",
+    cierre: "sabes qué tiene tu madre, cuál es el siguiente paso y cuándo volverán a informarte",
+    voice: "rounded",
+    tags: ["Todos los perfiles", "Incluye Admisión"],
+    opening: {
+      es: "¡Por fin alguien! Seis horas. ¡Seis! Mi madre tiene 88 años y nadie nos dice nada. ¿A esto le llamáis urgencias?",
+      ca: "Per fi algú! Sis hores. Sis! La meva mare té 88 anys i ningú ens diu res. A això en dieu urgències?",
+      en: "Finally, someone! Six hours. Six! My mother is 88 and nobody has told us anything. Is this what you call an emergency department?"
+    }
+  },
+  {
+    id: "masa",
+    title: "Una mancha en el TC",
+    family: "Dar malas noticias",
+    type: "spikes",
+    name: "Rosa",
+    descr: "Rosa, 62 años, vino sola por tos de dos meses con algo de sangre. El TC muestra una masa pulmonar sospechosa. Espera el resultado.",
+    persona: "Rosa Martínez, 62 años, exfumadora, viuda. Estás sola en una consulta de Urgencias esperando el resultado del TC.",
+    situacion: "Has venido por tos de dos meses y algún esputo con sangre. Te han hecho un TC de tórax hace dos horas. Intentas parecer tranquila, pero estás asustada.",
+    sabe: "Que te han hecho un TC por la tos y la sangre. Tu marido murió de cáncer hace 3 años.",
+    noSabe: "El resultado del TC.",
+    clinica: "TC de tórax: masa de unos 4 cm en el lóbulo superior derecho con ganglios mediastínicos aumentados, muy sugestiva de cáncer de pulmón. Necesita estudio: broncoscopia con biopsia y valoración por Neumología de forma preferente (ingreso o consulta rápida). Aún no hay diagnóstico confirmado.",
+    oculta: "Por las tardes cuidas de tu nieta Lucía, de 7 años, y te angustia quién la recogerá si tienes que ingresar. También temes acabar como tu marido.",
+    emocion: "ansiedad contenida",
+    inicio: 6,
+    dilema: "pides que no se lo digan a tu hija y preguntas directamente: «¿Me voy a morir?»",
+    cierre: "entiendes que hay una lesión que hay que estudiar, conoces el siguiente paso y sientes que no estás sola",
+    voice: "airy",
+    tags: ["Médicos residentes", "Médicos adjuntos"],
+    opening: {
+      es: "Hola… ¿ya tienen los resultados? Me dijeron que vendría alguien a explicármelo. Es solo una tos, ¿verdad?",
+      ca: "Hola… Ja teniu els resultats? Em van dir que vindria algú a explicar-m'ho. Només és una tos, oi?",
+      en: "Hello… do you have the results? They told me someone would come and explain. It's just a cough, isn't it?"
+    }
+  }
+];
+
+const LEVELS = [
+  { n: 1, name: "1 · Guiado", desc: "Se calma pronto si se reconoce su emoción. Pista en cada oportunidad perdida.", minutes: 8, rule: "Emoción moderada: te calmas pronto si reconocen lo que sientes." },
+  { n: 2, name: "2 · Estándar", desc: "Necesita 2–3 respuestas empáticas para calmarse. Máximo 3 pistas.", minutes: 10, rule: "Emoción alta: necesitas dos o tres respuestas empáticas claras antes de calmarte." },
+  { n: 3, name: "3 · Exigente", desc: "Interrumpe, culpa y plantea un dilema. Sin pistas; solo informe final.", minutes: 12, rule: "Muy exigente: a veces interrumpes, culpas al sistema y, cuando lo veas natural, planteas este dilema: " }
+];
+
+const RUBRIC = {
+  spikes: [
+    ["S1", "Setting: se presenta, busca intimidad, pregunta quién debe estar presente"],
+    ["P", "Percepción: pregunta qué sabe o qué le han dicho antes de informar"],
+    ["I", "Invitación: pregunta cuánta información desea recibir"],
+    ["K", "Conocimiento: avisa antes, frases cortas, sin jerga, comprueba comprensión"],
+    ["E", "Emociones: responde a la emoción antes de seguir informando"],
+    ["S2", "Estrategia y resumen: resume, acuerda pasos siguientes, ofrece disponibilidad"]
+  ],
+  estructura: [
+    ["PR", "Presentación: nombre y rol"],
+    ["ES", "Escucha inicial sin interrumpir"],
+    ["EX", "Explicación clara y sin jerga"],
+    ["PL", "Acuerdo de plan y tiempos"],
+    ["CO", "Comprobación de comprensión"],
+    ["CI", "Cierre con disponibilidad (cuándo volverá a informar)"]
+  ],
+  calgary: [
+    ["CIN", "Inicio: saluda, se presenta con nombre y rol, identifica el motivo"],
+    ["CRI", "Recoger información: escucha sin interrumpir, preguntas abiertas, explora ideas, preocupaciones y expectativas"],
+    ["CES", "Estructura: ordena la conversación, señaliza y resume"],
+    ["CRE", "Relación: muestra empatía e implica a la persona"],
+    ["CEX", "Explicación y plan: cantidad adecuada, sin jerga, comprueba comprensión, decide con la persona"],
+    ["CCI", "Cierre: resume, acuerda los siguientes pasos y cuándo volverá a informar"]
+  ],
+  aidet: [
+    ["AA", "Acknowledge (saludo): saluda, llama a la persona por su nombre, le presta atención"],
+    ["AI", "Introduce (presentación): dice su nombre, su rol y su experiencia"],
+    ["AD", "Duration (duración): dice cuánto durará y cuándo pasará cada cosa"],
+    ["AE", "Explanation (explicación): qué va a hacer, por qué, qué se notará y qué alternativas hay"],
+    ["AT", "Thank you (cierre): agradece, cierra y deja claro cómo y cuándo volverá"]
+  ],
+  heard: [
+    ["HH", "Hear (escuchar): deja que cuente todo sin interrumpir"],
+    ["HE", "Empathize (empatizar): reconoce y valida su emoción"],
+    ["HA", "Apologize (disculparse): se disculpa por la experiencia sin culpar a otros"],
+    ["HR", "Respond (responder): ofrece una acción concreta y realista dentro de su rol"],
+    ["HD", "Diagnose (analizar): identifica qué ha fallado y lo canaliza (registrar la queja, avisar a quien corresponda)"]
+  ],
+  nurse: [
+    ["N", "Nombrar la emoción"],
+    ["U", "Comprender / legitimar la reacción"],
+    ["R", "Respetar: reconocer el esfuerzo o la dificultad"],
+    ["S", "Apoyar: expresar apoyo concreto"],
+    ["E", "Explorar con pregunta abierta"]
+  ]
+};
+
+const state = {
+  caseId: "box", level: 2, lang: "es", alias: "", role: "",
+  turns: [], emotion: 0, emotionWhy: "", hintsUsed: 0, busy: false, ended: false,
+  start: 0, timer: null, ttsOn: false
+};
+let sample = null, tts = null, dict = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const currentCase = () => CASES.find(c => c.id === state.caseId);
+const currentLevel = () => LEVELS.find(l => l.n === state.level);
+
+
+state.mode = "voice";
+CASES[0].age = 52; CASES[0].look = { skin: "#D6A07A", light: "#EBBD98", shade: "#A6704E", blush: "#C9654F", hair: "#3A332E", hairLight: "#5C544D", hairDark: "#201B18", browC: "#2C2420", iris: "#5B3F2C", irisLight: "#8C6647", shirt: "#3B5563", shirtDark: "#283B45", lip: "#AE7262", lipDark: "#8C5243", bg: "#D3E0E3", style: "short", glasses: false, brow: "anger", age: 52 };
+CASES[1].age = 62; CASES[1].look = { skin: "#EBC4A4", light: "#F8DEC8", shade: "#BE9273", blush: "#DE8A79", hair: "#B6B0A9", hairLight: "#E0DCD6", hairDark: "#8B857F", browC: "#8A827B", iris: "#5D7868", irisLight: "#90A99B", shirt: "#8C5A6B", shirtDark: "#6A3F4F", lip: "#C07B74", lipDark: "#9E5D57", bg: "#E7DBD3", style: "bob", glasses: true, brow: "worry", age: 62 };
+/* ---------- Casos de Enfermería y de Admisión ---------- */
+CASES.push(
+  {
+    id: "via",
+    title: "El tercer pinchazo",
+    family: "Familiar angustiado",
+    type: "estructura",
+    name: "Lucía",
+    gender: "f",
+    age: 34,
+    descr: "Lucía, 34 años, madre de Hugo (4). Hugo tiene fiebre y está deshidratado; ya han fallado dos intentos de coger una vía y toca un tercero.",
+    persona: "Lucía Pérez, 34 años, madre de Hugo, de 4 años. Estás en un box de Urgencias con tu hijo en brazos.",
+    situacion: "Hugo lleva dos días con fiebre y vómitos y no retiene líquidos. Le han intentado coger una vía dos veces sin éxito; ha llorado muchísimo. Ahora entra la enfermera o el TCAE para un tercer intento y tú ya no puedes más.",
+    sabe: "Que Hugo necesita sueros porque está deshidratado y que los dos pinchazos han fallado.",
+    noSabe: "Que hay alternativas para que duela menos y para acertar a la primera.",
+    clinica: "Hugo necesita una vía para sueroterapia y analgesia. Alternativas que el profesional puede ofrecer: crema anestésica tópica (espera de unos 30-45 minutos), que lo intente la enfermera con más experiencia o con ayuda de ecografía, que la madre lo sostenga en brazos durante la técnica, distracción con móvil o juguete, y si el médico lo valora, una prueba de rehidratación oral con poca cantidad y frecuente.",
+    oculta: "Estás sola: tu pareja trabaja fuera esta semana. Te sientes culpable por no haber traído a Hugo ayer, cuando empezó a vomitar.",
+    emocion: "angustia",
+    inicio: 7,
+    dilema: "dices que no van a pinchar más a tu hijo y que te lo llevas a casa ahora mismo",
+    cierre: "entiendes por qué Hugo necesita la vía, aceptas un plan que le duela menos y sientes que no te juzgan",
+    voice: "glassy",
+    tags: ["Enfermería / TCAE"],
+    look: { skin: "#E3B08C", light: "#F2CDB0", shade: "#B57F5E", blush: "#D9786A", hair: "#3B2A22", hairLight: "#6A4B3B", hairDark: "#1F1511", browC: "#2E211B", iris: "#4E3726", irisLight: "#7E5C43", shirt: "#5E7D6A", shirtDark: "#435A4C", lip: "#C47C72", lipDark: "#A05C54", bg: "#DCE4D8", style: "bob", glasses: false, brow: "worry", age: 34 },
+    opening: {
+      es: "No, no, no… ¿otra vez? Ya le habéis pinchado dos veces y no paráis de fallar. ¡Mire cómo está, que tiene cuatro años!",
+      ca: "No, no, no… un altre cop? Ja l'heu punxat dues vegades i no pareu de fallar. Miri com està, que té quatre anys!",
+      en: "No, no, no… again? You've already stuck him twice and you keep missing. Look at him, he's four years old!"
+    }
+  },
+  {
+    id: "admision",
+    title: "Solo un acompañante",
+    family: "Usuario frustrado en Admisión",
+    type: "estructura",
+    name: "Manuel",
+    gender: "m",
+    age: 47,
+    descr: "Manuel, 47 años. Su padre Ángel (82, con demencia) lleva 3 horas dentro tras una caída. Quiere entrar, pero ya está su hermana y solo se permite un acompañante.",
+    persona: "Manuel Ortega, 47 años. Estás en el mostrador de Admisión de Urgencias; vienes directo del trabajo.",
+    situacion: "Tu padre, Ángel, de 82 años y con demencia, entró hace 3 horas por una caída en casa. Tu hermana Pilar está dentro con él. Quieres entrar, pero te dicen que solo puede haber un acompañante. Nadie os ha dado información médica todavía.",
+    sabe: "Que tu padre se cayó, que está dentro con tu hermana y que solo se permite un acompañante.",
+    noSabe: "Cómo está tu padre ni cuándo informará el médico.",
+    clinica: "Admisión NO tiene información clínica y no debe darla. Sí puede: ver en el sistema que Ángel está en observación pendiente de una radiografía, avisar a enfermería para que el médico informe a la familia en cuanto pueda, organizar un relevo para que Manuel entre y su hermana salga un rato, ofrecer un lugar donde esperar y explicar por qué existe la norma (espacio, intimidad y seguridad de otros pacientes).",
+    oculta: "Tu hermana lleva todo el peso del cuidado de vuestro padre y te sientes culpable por no estar nunca. Además, tu padre se pone muy nervioso si no ve caras conocidas.",
+    emocion: "frustración",
+    inicio: 6,
+    dilema: "amenazas con poner una reclamación y dices que vas a entrar igualmente",
+    cierre: "entiendes por qué no podéis estar los dos, sabes cómo hacer el relevo con tu hermana y quién os informará",
+    voice: "rounded",
+    tags: ["Admisión / atención al paciente"],
+    look: { skin: "#C8936E", light: "#DFAE8A", shade: "#986546", blush: "#BD6450", hair: "#4A4440", hairLight: "#7A736C", hairDark: "#2A2522", browC: "#332B26", iris: "#3E2E22", irisLight: "#6E5440", shirt: "#6B5B3E", shirtDark: "#4E4229", lip: "#A8705F", lipDark: "#875240", bg: "#E2DCCF", style: "short", glasses: true, brow: "anger", age: 47 },
+    opening: {
+      es: "Mire, mi padre tiene demencia y está ahí dentro desde hace tres horas. Vengo de trabajar y quiero entrar a verle. ¿Cómo que no puedo pasar?",
+      ca: "Miri, el meu pare té demència i fa tres hores que és a dins. Vinc de treballar i vull entrar a veure'l. Com que no puc passar?",
+      en: "Look, my father has dementia and he's been in there for three hours. I've come straight from work and I want to see him. What do you mean I can't go in?"
+    }
+  }
+);
+
+/* ---------- Voz: voces de España del equipo, según el sexo del personaje ---------- */
+CASES[0].gender = "m"; CASES[1].gender = "f";
+const LOCALE = { es: "es-ES", ca: "ca-ES", en: "en-GB" };
+const CLAUDE_VOICES = ["ash", "onyx", "echo", "verse", "ballad", "coral", "sage", "shimmer", "nova"];
+state.voiceByCase = {};
+try { state.voiceByCase = JSON.parse(localStorage.getItem("empatia-voces") || "{}") || {}; } catch (e) {}
+function caseVoice(c) { const v = state.voiceByCase[c.id]; return CLAUDE_VOICES.includes(v) ? v : (c.gender === "f" ? "coral" : "ash"); }
+function fillVoiceSelect() {
+  const sel = $("voiceSel"); if (!sel) return;
+  const c = currentCase();
+  if (!tts) {
+    sel.innerHTML = `<option>No disponible aquí</option>`; sel.disabled = true; $("voiceTest").disabled = true;
+    $("voiceHelp").textContent = "La voz no está disponible en este navegador.";
+    return;
+  }
+  sel.disabled = false; $("voiceTest").disabled = false;
+  sel.innerHTML = CLAUDE_VOICES.map((n, i) => `<option value="${n}">Voz ${i + 1} · ${n}${i < 5 ? " (grave)" : " (aguda)"}</option>`).join("");
+  sel.value = caseVoice(c);
+  $("voiceHelp").textContent = `Pulsa Probar y elige la voz que mejor encaje con ${c.name}; se recuerda para este caso.`;
+}
+
+const SHORT = {
+  S1: ["S", "Setting"], P: ["P", "Percepción"], I: ["I", "Invitación"], K: ["K", "Conocimiento"], E: ["E", "Emociones"], S2: ["S", "Estrategia"],
+  PR: ["Pr", "Presentación"], ES: ["Es", "Escucha"], EX: ["Ex", "Explicación"], PL: ["Pl", "Plan"], CO: ["Co", "Comprensión"], CI: ["Ci", "Cierre"],
+  N: ["N", "Nombrar"], U: ["U", "Comprender"], R: ["R", "Respetar"], S: ["S", "Apoyar"]
+};
+const SHORT_N = { N: ["N", "Nombrar"], U: ["U", "Comprender"], R: ["R", "Respetar"], S: ["S", "Apoyar"], E: ["E", "Explorar"] };
+Object.assign(SHORT, {
+  CIN: ["In", "Inicio"], CRI: ["Ri", "Información"], CES: ["Es", "Estructura"], CRE: ["Re", "Relación"], CEX: ["Ex", "Explicación"], CCI: ["Ci", "Cierre"],
+  AA: ["A", "Saludo"], AI: ["I", "Presentación"], AD: ["D", "Duración"], AE: ["E", "Explicación"], AT: ["T", "Cierre"],
+  HH: ["H", "Escuchar"], HE: ["E", "Empatizar"], HA: ["A", "Disculparse"], HR: ["R", "Responder"], HD: ["D", "Analizar"]
+});
+const CARE_ITEMS = ["Hacerme sentir cómodo/a", "Dejarme contar mi historia", "Escucharme de verdad", "Interesarse por mí como persona", "Entender del todo mis preocupaciones", "Mostrar cuidado y compasión", "Ser positivo/a", "Explicar las cosas con claridad", "Ayudarme a sentir que tengo cierto control", "Hacer un plan de acción conmigo"];
+function roleKind() {
+  const r = state.role || ($("role") ? $("role").value : "");
+  return /admisi/i.test(r) ? "adm" : /enfermer/i.test(r) ? "enf" : "med";
+}
+function frameworkFor() {
+  const k = roleKind(), c = currentCase();
+  if (k === "adm") return { name: "HEARD", short: "HEARD", sub: "Cómo atendiste la queja", items: RUBRIC.heard, nurse: RUBRIC.nurse.slice(0, 3), nurseName: "NURSE reducido (N, U, R)",
+    limits: "Es personal de Admisión / atención al usuario: NO puede ni debe dar información clínica. Valora que explique las normas con sus motivos, ofrezca alternativas reales (relevos, avisar a enfermería o al médico para que informe, un lugar donde esperar) y canalice la queja. Toda alternativa o pista debe estar dentro de su rol." };
+  if (k === "enf") return { name: "AIDET", short: "AIDET", sub: "Cómo te presentaste y explicaste el procedimiento", items: RUBRIC.aidet, nurse: RUBRIC.nurse, nurseName: "NURSE",
+    limits: "Es Enfermería / TCAE: puede explicar cuidados y procedimientos, proponer medidas contra el dolor y el miedo dentro de sus competencias y avisar al médico; no da diagnósticos médicos. Toda alternativa o pista debe estar dentro de su rol." };
+  if (c.type === "spikes") return { name: "SPIKES", short: "SPIKES", sub: "Cómo diste la mala noticia", items: RUBRIC.spikes, nurse: RUBRIC.nurse, nurseName: "NURSE",
+    limits: "Es médico: le corresponde informar del hallazgo y del plan." };
+  return { name: "Calgary-Cambridge", short: "Calgary-Cambridge", sub: "Cómo condujiste la entrevista", items: RUBRIC.calgary, nurse: RUBRIC.nurse, nurseName: "NURSE",
+    limits: "Es médico: le corresponde informar de la situación clínica y del plan." };
+}
+
+function show(view) {
+  ["viewSetup", "viewSession", "viewReport"].forEach(v => $(v).classList.toggle("hidden", v !== view));
+
+  window.scrollTo(0, 0);
+}
+
+/* ---------- Ilustración del personaje ---------- */
+function emoColor(n) { return n <= 3 ? "var(--calm)" : n <= 6 ? "var(--mid)" : "var(--high)"; }
+function emoWord(n) { return n <= 3 ? "tranquilo" : n <= 6 ? "tenso" : "muy alterado"; }
+let faceSeq = 0;
+function faceSVG(c, n) {
+  const L = c.look, u = "f" + (faceSeq++);
+  const lvl = n >= 7 ? "high" : n >= 4 ? "mid" : "low";
+  const anger = L.brow === "anger";
+  const mirror = d => d.replace(/(-?\d+\.?\d*) (-?\d+\.?\d*)/g, (m, x, y) => `${(200 - Number(x)).toFixed(1)} ${y}`);
+
+  // Cejas (rellenas, afiladas hacia fuera)
+  const bp = {
+    high: anger ? { i: 81, o: 76.5, a: 77, t: 2.8 } : { i: 72.5, o: 78, a: 73.5, t: 2.4 },
+    mid: { i: 77, o: 77.5, a: 74.5, t: 2.5 },
+    low: { i: 76.5, o: 77.2, a: 73.6, t: 2.4 }
+  }[lvl];
+  const browL = `M79 ${bp.o} Q87 ${bp.a} 95.5 ${bp.i} L95.5 ${bp.i + bp.t} Q87 ${bp.a + bp.t + 0.6} 79.5 ${bp.o + bp.t * 0.55} Z`;
+  // Ojos
+  const lid = lvl === "high" ? (anger ? 84.3 : 80.2) : lvl === "low" ? 82.6 : 81.6;
+  const eyeL = cx => {
+    const x0 = cx - 7, x1 = cx + 7;
+    return `
+    <path d="M${x0} 86.5 Q${cx} ${lid} ${x1} 86.5 Q${cx} 90.3 ${x0} 86.5Z" fill="#F3EDE7"/>
+    <clipPath id="${u}e${cx}"><path d="M${x0} 86.5 Q${cx} ${lid} ${x1} 86.5 Q${cx} 90.3 ${x0} 86.5Z"/></clipPath>
+    <g clip-path="url(#${u}e${cx})">
+      <circle cx="${cx + 0.4}" cy="86.4" r="3.7" fill="url(#${u}iris)"/>
+      <circle cx="${cx + 0.4}" cy="86.4" r="1.7" fill="#1C1614"/>
+      <path d="M${x0} ${lid + 0.3} Q${cx} ${lid - 1} ${x1} ${lid + 0.3} L${x1} 84 L${x0} 84Z" fill="#000" opacity="0.12"/>
+    </g>
+    <circle cx="${cx + 1.6}" cy="85.2" r="0.9" fill="#FFFFFF" opacity="0.95"/>
+    <path d="M${x0 - 0.4} 86.6 Q${cx} ${lid - 0.6} ${x1 + 0.4} 86.4" stroke="#2A1F1B" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <path d="M${x0 + 0.5} ${lid - 2.4} Q${cx} ${lid - 5} ${x1 - 0.5} ${lid - 2.6}" stroke="${L.shade}" stroke-width="0.9" fill="none" opacity="0.8"/>
+    <path d="M${x0 + 1.2} 88.4 Q${cx} 90.8 ${x1 - 1.2} 88.3" stroke="${L.shade}" stroke-width="0.7" fill="none" opacity="0.7"/>
+    ${L.age >= 60 ? `<path d="M${x0 + 1.5} 91.4 Q${cx} 93.6 ${x1 - 1.5} 91.3" stroke="${L.shade}" stroke-width="0.7" fill="none" opacity="0.6"/>` : ""}`;
+  };
+  // Boca
+  const M = {
+    low: { up: "M88.5 111.8 Q93 110.4 97.4 111 Q100 111.8 102.6 111 Q107 110.4 111.5 111.8 Q100 115.4 88.5 111.8Z", lo: "M89.2 112.2 Q100 116 110.8 112.2 Q105.8 118.6 100 119 Q94.2 118.6 89.2 112.2Z", line: "M88.5 111.9 Q100 116.1 111.5 111.9" },
+    mid: { up: "M90.5 113.6 Q94 111.3 97.6 111.8 Q100 112.6 102.4 111.8 Q106 111.3 109.5 113.6 Q100 114.6 90.5 113.6Z", lo: "M91 113.8 Q100 115 109 113.8 Q105.5 118.6 100 118.9 Q94.5 118.6 91 113.8Z", line: "M90.5 113.7 Q100 114.8 109.5 113.7" },
+    high: anger
+      ? { up: "M90.5 115.8 Q95 113.4 100 113.9 Q105 113.4 109.5 115.8 Q100 114.8 90.5 115.8Z", lo: "M91 115.9 Q100 115 109 115.9 Q105 118.2 100 118.3 Q95 118.2 91 115.9Z", line: "M90.5 115.9 Q100 114.4 109.5 115.9" }
+      : { up: "M91 115.2 Q95.5 112.6 100 113.2 Q104.5 112.6 109 115.2 Q100 114.2 91 115.2Z", lo: "M91.5 115.4 Q100 114.6 108.5 115.4 Q104.5 119.6 100 119.8 Q95.5 119.6 91.5 115.4Z", line: "M91 115.3 Q100 114 109 115.3" }
+  }[lvl];
+  const wrinkles = [
+    lvl === "high" && anger ? `<path d="M97 79 Q97.6 82 97.2 84.5 M103 79 Q102.4 82 102.8 84.5" stroke="${L.shade}" stroke-width="1" fill="none" opacity="0.9"/>` : "",
+    lvl === "high" && !anger ? `<path d="M86 64 Q100 60.5 114 64 M88.5 68.5 Q100 65.5 111.5 68.5" stroke="${L.shade}" stroke-width="0.9" fill="none" opacity="0.85"/>` : "",
+    L.age >= 50 ? `<path d="M92 103 Q88.6 106.5 89.2 110.4 M108 103 Q111.4 106.5 110.8 110.4" stroke="${L.shade}" stroke-width="${L.age >= 60 ? 0.9 : 0.7}" fill="none" opacity="${L.age >= 60 ? 0.5 : 0.35}"/>` : "",
+    L.age >= 50 ? `<path d="M73.5 85 L70.8 83.6 M73.6 87.6 L70.8 87.8 M126.5 85 L129.2 83.6 M126.4 87.6 L129.2 87.8" stroke="${L.shade}" stroke-width="0.7" opacity="0.6"/>` : ""
+  ].join("");
+
+  let back = "", body = "", front = "", extra = "";
+  if (L.style === "short") {
+    body = `
+      <path d="M20 210 C22 170 50 152 82 147 L100 160 L118 147 C150 152 178 170 180 210Z" fill="url(#${u}cloth)"/>
+      <path d="M84 146 L100 172 L116 146 L120 150 L100 182 L80 150Z" fill="#DCE6EC"/>
+      <path d="M82 146 L76 160 L94 168Z M118 146 L124 160 L106 168Z" fill="#EEF3F6"/>
+      <path d="M80 150 L62 154 C70 170 84 188 92 210 L100 182Z M120 150 L138 154 C130 170 116 188 108 210 L100 182Z" fill="#2E4552"/>
+      <path d="M62 154 C70 170 84 188 92 210 M138 154 C130 170 116 188 108 210" stroke="#24363F" stroke-width="1.5" fill="none"/>`;
+    front = `
+      <path d="M69.5 90 C64 60 78 34 102 34 C126 34 138 56 131 90 C130 80 128.5 72 125.5 66.5 C122 63.5 118 62 113 62.5 C110 59.5 105 58 99.5 58.6 C94 57.6 87 58.8 82 62.2 C77.5 64.2 74.2 68 72.6 73 C71 78 70 84 69.5 90Z" fill="url(#${u}hair)"/>
+      <path d="M90 37 C96 44 104 50 118 56 M84 41 C90 48 98 54 108 58 M96 36 C104 42 114 47 124 52" stroke="${L.hairLight}" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.7"/>
+      <path d="M69.5 88 C69 82 69.4 76 71 71 L72.6 86Z M130.6 88 C131 82 130.6 76 129 71 L127.4 86Z" fill="#8F8983"/>
+      `;
+    extra = `<path d="M72 98 C73 114 82 128 100 131.5 C118 128 127 114 128 98 C126 110 118 122 100 124 C82 122 74 110 72 98Z" fill="#3A3633" opacity="0.13"/>
+      <path d="M88 108.8 Q100 106.8 112 108.8 Q108 110.6 100 110.4 Q92 110.6 88 108.8Z" fill="#3A3633" opacity="0.12"/>`;
+  } else {
+    back = `<path d="M60 96 C55 60 72 34 101 34 C131 34 147 60 141 96 C141 116 140 132 135 142 C126 146 116 144 112 138 L88 138 C84 144 74 146 65 142 C60 132 60 116 60 96Z" fill="url(#${u}hair)"/>`;
+    body = `
+      <path d="M20 210 C22 170 50 152 82 147 L100 158 L118 147 C150 152 178 170 180 210Z" fill="url(#${u}cloth)"/>
+      <path d="M84 147 L100 176 L116 147 C108 150 92 150 84 147Z" fill="#F1E6DF"/>
+      <path d="M84 147 L64 156 C74 172 88 190 94 210 L100 176Z M116 147 L136 156 C126 172 112 190 106 210 L100 176Z" fill="#7A4A5B"/>
+      <path d="M88 152 Q100 164 112 152" stroke="#C7A04E" stroke-width="1.2" fill="none"/>
+      <circle cx="100" cy="161" r="2.3" fill="#D4AE5A"/>`;
+    front = `
+      <path d="M69 84 C70 56 85 41 104 41 C123 41 135 55 133 80 C126 67 114 60 98 62 C86 64 75 72 69 84Z" fill="url(#${u}hair)"/>
+      <path d="M78 56 C88 47 104 44 118 48 M73 70 C80 60 92 54 104 54" stroke="#E2DDD6" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.8"/>
+      <path d="M65 100 C64 116 66 130 70 140 M135 100 C136 116 134 130 130 140 M68 92 C67 104 68 118 72 130" stroke="#8C8680" stroke-width="1" fill="none" opacity="0.7"/>`;
+    extra = `<circle cx="70" cy="104" r="2.2" fill="#D4AE5A"/><circle cx="130" cy="104" r="2.2" fill="#D4AE5A"/>`;
+  }
+  const glasses = L.glasses ? `
+    <g fill="#FFFFFF" fill-opacity="0.1" stroke="#7B6A60" stroke-width="1.4">
+      <rect x="78" y="79.5" width="20" height="15" rx="6.5"/><rect x="102" y="79.5" width="20" height="15" rx="6.5"/>
+    </g>
+    <path d="M98 85 Q100 83.4 102 85 M78 84.5 L70.5 83 M122 84.5 L129.5 83" stroke="#7B6A60" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+    <path d="M81 82 L84.5 80.8" stroke="#FFFFFF" stroke-width="1.1" stroke-linecap="round" opacity="0.7"/>` : "";
+  const flush = lvl === "high" && anger ? 0.45 : lvl === "high" ? 0.18 : 0.26;
+
+  return `<svg viewBox="28 26 144 144" role="img" aria-label="Ilustración de ${esc(c.name)}" width="100%" height="100%">
+    <defs>
+      <radialGradient id="${u}bg" cx="50%" cy="38%" r="70%"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/><stop offset="1" stop-color="${L.bg}"/></radialGradient>
+      <radialGradient id="${u}skin" cx="44%" cy="40%" r="62%"><stop offset="0" stop-color="${L.light}"/><stop offset="0.6" stop-color="${L.skin}"/><stop offset="1" stop-color="${L.shade}"/></radialGradient>
+      <linearGradient id="${u}hair" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="${L.hairLight}"/><stop offset="0.55" stop-color="${L.hair}"/><stop offset="1" stop-color="${L.hairDark}"/></linearGradient>
+      <linearGradient id="${u}cloth" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${L.shirt}"/><stop offset="1" stop-color="${L.shirtDark}"/></linearGradient>
+      <radialGradient id="${u}iris" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="${L.irisLight}"/><stop offset="1" stop-color="${L.iris}"/></radialGradient>
+      <linearGradient id="${u}lip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${L.lip}"/><stop offset="1" stop-color="${L.lipDark}"/></linearGradient>
+      <radialGradient id="${u}bl"><stop offset="0" stop-color="${L.blush}" stop-opacity="0.75"/><stop offset="1" stop-color="${L.blush}" stop-opacity="0"/></radialGradient>
+      <linearGradient id="${u}side" x1="0" y1="0" x2="1" y2="0"><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#3A2018" stop-opacity="0.22"/></linearGradient>
+    </defs>
+    <rect x="0" y="0" width="200" height="200" fill="url(#${u}bg)"/>
+    ${back}
+    <path d="M88 118 L87 150 Q100 159 113 150 L112 118Z" fill="${L.shade}"/>
+    <path d="M87 128 Q100 138 113 128 L113 136 Q100 142 87 136Z" fill="#3A2018" opacity="0.18"/>
+    ${body}
+    <path d="M70.5 84 C67 82 64.5 86 65.5 92 C66.5 98 69 101 72 100.5Z" fill="${L.skin}"/>
+    <path d="M69.5 88 C68.4 89.5 68.6 93 70.6 96" stroke="${L.shade}" stroke-width="1.1" fill="none"/>
+    <path d="M129.5 84 C133 82 135.5 86 134.5 92 C133.5 98 131 101 128 100.5Z" fill="${L.skin}"/>
+    <path d="M130.5 88 C131.6 89.5 131.4 93 129.4 96" stroke="${L.shade}" stroke-width="1.1" fill="none"/>
+    <path d="M70 82 C70 56 84 41 100 41 C116 41 130 56 130 82 C130 101 125 115 115 124.5 C109 130 104.5 132 100 132 C95.5 132 91 130 85 124.5 C75 115 70 101 70 82Z" fill="url(#${u}skin)"/>
+    <path d="M70 82 C70 56 84 41 100 41 C116 41 130 56 130 82 C130 101 125 115 115 124.5 C109 130 104.5 132 100 132 C95.5 132 91 130 85 124.5 C75 115 70 101 70 82Z" fill="url(#${u}side)"/>
+    ${extra}
+    <ellipse cx="83" cy="100" rx="10" ry="6.5" fill="url(#${u}bl)" opacity="${flush * 1.7}"/>
+    <ellipse cx="117" cy="100" rx="10" ry="6.5" fill="url(#${u}bl)" opacity="${flush * 1.7}"/>
+    ${wrinkles}
+    <g class="blink">${eyeL(88)}${eyeL(112)}</g>
+    <path d="${browL}" fill="${L.browC}"/>
+    <path d="${mirror(browL)}" fill="${L.browC}"/>
+    <path d="M97.5 88 C97 93 96.4 97 95.6 100.6" stroke="${L.shade}" stroke-width="1" fill="none" opacity="0.7"/>
+    <path d="M94.6 101.6 Q96 104.4 98.4 103.6 Q100 104.8 101.6 103.6 Q104 104.4 105.4 101.6" stroke="${L.shade}" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+    <ellipse cx="100.6" cy="100.6" rx="2.4" ry="1.6" fill="#FFFFFF" opacity="0.22"/>
+    <path d="M98.5 105.5 L98.6 110.2 M101.5 105.5 L101.4 110.2" stroke="${L.shade}" stroke-width="0.6" opacity="0.45"/>
+    <path d="${M.up}" fill="url(#${u}lip)"/>
+    <path d="${M.lo}" fill="url(#${u}lip)"/>
+    <path d="${M.lo}" fill="#FFFFFF" opacity="0.12" transform="translate(0 -0.6) scale(1 1)"/>
+    <path d="${M.line}" stroke="#5E2E27" stroke-width="1" fill="none" stroke-linecap="round"/>
+    <ellipse class="talk" cx="100" cy="${lvl === "high" ? 116.4 : lvl === "mid" ? 114.6 : 113.8}" rx="6.2" ry="3.4" fill="#4A2420"/>
+    ${front}
+    ${glasses}
+  </svg>`;
+}
+
+function ringSVG(n) {
+  const r = 46, C = 2 * Math.PI * r;
+  return `<svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
+    <circle cx="50" cy="50" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="5"/>
+    <circle cx="50" cy="50" r="${r}" fill="none" stroke="${emoColor(n)}" stroke-width="5" stroke-linecap="round"
+      stroke-dasharray="${(n / 10 * C).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 50 50)" style="transition: stroke-dasharray .6s ease"/>
+  </svg>`;
+}
+function avatarHTML(c, n) { return ringSVG(n) + `<div class="face">${faceSVG(c, n)}</div>`; }
+
+/* ---------- Configuración ---------- */
+function seg(id, items, current, onPick) {
+  $(id).innerHTML = items.map(([v, label]) => `<button type="button" data-v="${v}" aria-pressed="${String(v) === String(current)}">${esc(label)}</button>`).join("");
+  $(id).querySelectorAll("button").forEach(b => b.onclick = () => onPick(b.dataset.v));
+}
+const CASE_ROLES = { box: ["med", "enf", "adm"], masa: ["med"], via: ["enf"], admision: ["adm"] };
+const ROLE_SHORT = [["Médico residente", "Residente"], ["Médico adjunto", "Adjunto"], ["Enfermería / TCAE", "Enfermería"], ["Admisión / atención al paciente", "Admisión"]];
+const ROLE_WORD = { med: "médicos", enf: "Enfermería", adm: "Admisión" };
+function fitFor(c) {
+  const k = roleKind(), r = CASE_ROLES[c.id] || ["med", "enf", "adm"];
+  if (!r.includes(k)) return { cls: "off", ok: false, label: "Solo " + r.map(x => ROLE_WORD[x]).join(" y ") };
+  return { cls: "rec", ok: true, label: "Aplica a tu estamento" };
+}
+function pickRole(v) {
+  $("role").value = v; state.role = v;
+  const k = roleKind();
+  if (!(CASE_ROLES[state.caseId] || []).includes(k)) {
+    const best = CASES.find(c => (CASE_ROLES[c.id] || []).length === 1 && CASE_ROLES[c.id][0] === k) || CASES.find(c => (CASE_ROLES[c.id] || []).includes(k));
+    if (best) state.caseId = best.id;
+  }
+  renderSetup();
+}
+function renderSetup() {
+  seg("roleSeg", ROLE_SHORT, $("role").value, pickRole);
+  const ordered = CASES.filter(c => fitFor(c).ok).concat(CASES.filter(c => !fitFor(c).ok));
+  $("cases").innerHTML = ordered.map(c => { const f = fitFor(c); return `
+    <button type="button" class="case ${f.cls}" data-case="${c.id}" aria-pressed="${c.id === state.caseId}"${f.ok ? "" : ` disabled aria-disabled="true" title="Este caso no aplica a tu estamento"`}>
+      <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></span>
+      <div class="avatar-wrap">${avatarHTML(c, c.inicio)}</div>
+      <div class="title"><span class="fit">${esc(f.label)}</span>${esc(c.title)}</div>
+      <div class="who">${esc(c.name)}, ${c.age}</div>
+      <p class="scene">${esc(c.descr.replace(/^[^.]+\.\s*/, ""))}</p>
+      <div class="chips"><span class="chip accent" title="${esc(c.family)}">${esc(c.emocion)} ${c.inicio}/10</span></div>
+    </button>`; }).join("");
+  document.querySelectorAll("[data-case]").forEach(b => b.onclick = () => { state.caseId = b.dataset.case; renderSetup(); });
+  const voiceOK = !!dict;
+  seg("modeSeg", [["voice", "Hablar"], ["text", "Escribir"]], state.mode, v => { if (v === "voice" && !voiceOK) return; state.mode = v; renderSetup(); });
+  $("modeSeg").querySelector('[data-v="voice"]').disabled = !voiceOK;
+  $("modeHelp").textContent = !voiceOK ? "Hablar necesita Chrome o la app de escritorio." : state.mode === "voice" ? "Hablas y te contesta en voz alta." : "Escribes; la voz del personaje es opcional.";
+  seg("levelSeg", LEVELS.map(l => [l.n, l.name.split("· ")[1]]), state.level, v => { state.level = Number(v); renderSetup(); });
+  $("levelHelp").textContent = `${currentLevel().minutes} min · ${({ 1: "se calma pronto; pista en cada oportunidad", 2: "2–3 respuestas empáticas; máx. 3 pistas", 3: "interrumpe y plantea un dilema; sin pistas" })[state.level]}`;
+  seg("langSeg", [["es", "Castellano"], ["ca", "Català"], ["en", "English"]], state.lang, v => { state.lang = v; renderSetup(); });
+  fillVoiceSelect();
+  const FW = frameworkFor();
+  $("roleHelp").innerHTML = `<span class="muted">Te evaluaremos con</span> <span class="fw-chip">${esc(FW.name)}</span><span class="plus">+</span><span class="fw-chip">${esc(FW.nurseName)}</span><span class="plus">+</span><span class="fw-chip">CARE</span>`;
+  const c = currentCase();
+  if (sample) $("startBtn").textContent = `Entrar al box con ${c.name}`;
+  $("ctaMeta").textContent = `${(ROLE_SHORT.find(r => r[0] === $("role").value) || ["", ""])[1]} · Nivel ${state.level} · ${currentLevel().minutes} min · ${state.mode === "voice" ? "Hablando" : "Escribiendo"}`;
+}
+/* ---------- IA ---------- */
+function extractJSON(text) {
+  const t = String(text || "");
+  const a = t.indexOf("{"), b = t.lastIndexOf("}");
+  if (a < 0 || b < a) throw new Error("Respuesta sin JSON");
+  return JSON.parse(t.slice(a, b + 1));
+}
+async function askJSON(prompt, tier, ms = 30000) {
+  const ctl = new AbortController();
+  let timer;
+  const timeout = new Promise((_, rej) => { timer = setTimeout(() => { ctl.abort(); rej({ code: "timeout" }); }, ms); });
+  const run = (async () => {
+    const opts = { modelTier: tier, cache: false, signal: ctl.signal };
+    if (typeof sample.json === "function") {
+      try { return await sample.json(prompt, opts); }
+      catch (e) { if (ctl.signal.aborted || (e && (e.code === "not_granted" || e.code === "rate_limited"))) throw e; }
+    }
+    const r = await sample(prompt, opts);
+    return extractJSON(r.text);
+  })();
+  try { return await Promise.race([run, timeout]); }
+  finally { clearTimeout(timer); run.catch(() => {}); }
+}
+function transcriptText(turns) {
+  return turns.map((t, i) => `T${i + 1} ${t.who === "patient" ? "Paciente/familiar" : "Profesional"}: ${t.text}`).join("\n");
+}
+
+function patientPrompt() {
+  const c = currentCase(), l = currentLevel();
+  return `Eres ${c.persona}
+Esto es una SIMULACIÓN formativa para entrenar la empatía de personal sanitario de Urgencias. Interpretas al personaje de forma realista. Nunca rompas el personaje, no des consejos al profesional ni le digas qué debería decir.
+Idioma: responde SIEMPRE en ${LANGS[state.lang]}, aunque el profesional use otro idioma.
+Interlocutor: ${state.role}.
+
+Situación: ${c.situacion}
+Lo que sabes: ${c.sabe}
+Lo que NO sabes: ${c.noSabe}
+Información clínica real del caso (solo la conoces si el profesional te la cuenta; no la inventes ni la adelantes): ${c.clinica}
+Preocupación oculta (revélala SOLO si el profesional te hace una pregunta abierta y empática sobre qué te preocupa o cómo estás): ${c.oculta}
+Emoción: ${c.emocion}. Intensidad actual: ${state.emotion}/10.
+Nivel de dificultad ${l.n}: ${l.rule}${l.n === 3 ? c.dilema + "." : ""}
+
+Reglas:
+- De 1 a 3 frases por turno, lenguaje oral y natural, sin listas ni términos técnicos. Puedes dudar, cortar frases o repetir lo que te preocupa.
+- Sube la intensidad +1 o +2 si te interrumpen, usan jerga sin explicar, te dan prisa, te tranquilizan en falso, ignoran lo que dices o culpan a otros.
+- Bájala −1 o −2 si se presentan, nombran o legitiman tu emoción, te dejan hablar, explican con claridad, te dan un plan concreto o un tiempo estimado.
+- Si no hay motivo claro, mantenla. Rango 0 a 10.
+- Si llega a 10, di que quieres hablar con otro profesional y marca fin=true.
+- Si el profesional cierra la conversación de forma adecuada (${c.cierre}), despídete con naturalidad y marca fin=true.
+- Si te preguntan algo que no está en tu ficha, di que no lo sabes.
+
+Conversación hasta ahora:
+${transcriptText(state.turns)}
+
+Devuelve SOLO un JSON válido, sin texto adicional:
+{"respuesta":"lo que dices ahora","intensidad":numero,"motivo_cambio":"en español, máximo 12 palabras, por qué cambió o no la intensidad","fin":true|false}`;
+}
+
+function coachPrompt() {
+  const last = state.turns.slice(-3);
+  return `Eres coach de comunicación clínica y observas una simulación de entrenamiento en empatía en Urgencias (nivel ${state.level}). El caso: ${currentCase().situacion}
+Profesional: ${state.role}. Marcos de referencia para su rol: ${frameworkFor().name} y ${frameworkFor().nurseName}. ${frameworkFor().limits}
+
+Últimos turnos:
+${transcriptText(last)}
+
+Decide si en el ÚLTIMO turno del profesional se perdió una oportunidad empática clara: emoción expresada y no reconocida, pregunta del paciente ignorada, jerga sin explicar, falsa tranquilización, justificación defensiva, interrupción o dar información sin preguntar antes qué sabe.
+${state.level === 2 ? "Sé selectivo: solo oportunidades importantes." : "Señala cualquier oportunidad clara."}
+Si la hay, escribe UNA pista en español, en segunda persona, de máximo 15 palabras, que oriente sin dar la frase hecha. Si el profesional lo hizo razonablemente bien, pista = null.
+
+Devuelve SOLO JSON: {"pista":"texto" | null,"tipo":"N|U|R|S|E|estructura|jerga|falsa_tranquilizacion|interrupcion"}`;
+}
+
+function evalPrompt() {
+  const c = currentCase();
+  const F = frameworkFor(), block = F.items;
+  return `Eres evaluador experto en comunicación clínica. Puntúa esta simulación formativa de Urgencias.
+
+Caso: ${c.title}. ${c.situacion} Información y opciones del caso (lo que corresponda según el rol del profesional): ${c.clinica}
+Preocupación oculta del personaje: ${c.oculta}
+Profesional: ${state.role}. Nivel ${state.level}.
+Rol y límites: ${F.limits}
+
+Rúbrica. Cada ítem vale 0 (ausente), 1 (parcial) o 2 (logrado). Cada ítem con 1 o 2 DEBE llevar una cita literal y breve del profesional tomada de la transcripción; si no hay cita, el ítem vale 0.
+Bloque ${F.name}:
+${block.map(([k, d]) => `- ${k}: ${d}`).join("\n")}
+Bloque ${F.nurseName}:
+${F.nurse.map(([k, d]) => `- ${k}: ${d}`).join("\n")}
+CARE Measure (empatía percibida): ponte en la piel de ${c.name} y puntúa del 1 (mal) al 5 (excelente) cómo fue el profesional en cada ítem, en este orden:
+${CARE_ITEMS.map((t, i) => `${i + 1}. ${t}`).join("\n")}
+Penalizaciones (lista; cada una con cita literal): interrumpir una expresión emocional, jerga sin explicar, falsa tranquilización, culpar a otros servicios, prometer lo que no depende de él.
+No premies la longitud ni las fórmulas vacías repetidas. Tono formativo y respetuoso.
+
+Transcripción:
+${transcriptText(state.turns)}
+
+Devuelve SOLO JSON válido con esta forma:
+{"bloque":[{"item":"clave","puntos":0,"cita":"","comentario":"máx. 15 palabras"}],
+ "nurse":[{"item":"N","puntos":0,"cita":"","comentario":""}],
+ "care":[3,3,3,3,3,3,3,3,3,3],
+ "penalizaciones":[{"tipo":"","cita":""}],
+ "fortalezas":["",""],
+ "mejoras":[{"momento":"lo que dijo el paciente en ese momento (cita breve)","problema":"","alternativa":"frase concreta que podría haber dicho, adecuada a su rol"}],
+ "resumen":"2 frases en español"}
+Incluye exactamente los ítems ${block.map(b => b[0]).join(", ")} en "bloque", ${F.nurse.map(b => b[0]).join(", ")} en "nurse" y 10 números enteros del 1 al 5 en "care". Exactamente 2 fortalezas y 2 mejoras.`;
+}
+
+function speakAsync(text) {
+  const p = speakRaw(text), w = $("avatarWrap");
+  if (state.ttsOn && w) {
+    w.classList.add("speaking");
+    p.finally(() => { if (V.phase !== "speaking") w.classList.remove("speaking"); });
+  }
+  return p;
+}
+/* Voz del personaje: misma voz e idioma en toda la sesión; reintento solo con los mismos parámetros;
+   vigilancia de cuelgues; si falla dos veces seguidas, se avisa y se sigue con subtítulos (nunca en silencio). */
+let voiceFails = 0;
+function voiceFailed(msg) {
+  voiceFails++;
+  if (msg || voiceFails >= 2) {
+    setTTS(false);
+    if (!$("viewSession").classList.contains("hidden")) addMsg("sys", msg || "La voz del personaje ha fallado. Seguimos con subtítulos; puedes reactivarla con el botón Voz.");
+  }
+}
+function withWatchdog(p, text) {
+  const ms = 8000 + String(text).length * 85;
+  let timer;
+  p.catch(() => {});
+  const dog = new Promise(res => { timer = setTimeout(() => { try { tts && tts.stop(); } catch (e) {} res("timeout"); }, ms); });
+  return Promise.race([p.then(() => "ok"), dog]).finally(() => clearTimeout(timer));
+}
+async function speakRaw(text) {
+  if (!state.ttsOn || !tts || !text) return;
+  if (state.listening && dict) { try { await dict.stop(); } catch (e) {} }
+  const opts = { voice: caseVoice(currentCase()), language: state.lang, rate: 1 };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const r = await withWatchdog(tts.speak(text, opts), text);
+      if (r === "ok") voiceFails = 0;
+      return;
+    } catch (e) {
+      const code = e && e.code;
+      if (code === "viewer_stopped" || !state.ttsOn) return;
+      if (code === "not_granted") { voiceFailed("La voz del personaje está desactivada en este navegador. Seguimos con subtítulos."); return; }
+      if (code === "busy") { if (state.listening && dict) { try { await dict.stop(); } catch (e2) {} } await new Promise(r => setTimeout(r, 250)); continue; }
+      if (code === "rate_limited") { await new Promise(r => setTimeout(r, 1500)); continue; }
+      if (attempt === 1) voiceFailed();
+    }
+  }
+}
+function stopSpeaking() { try { tts && tts.stop(); } catch (e) {} }
+function maskPII(text) {
+  let found = false;
+  const out = text
+    .replace(/\b\d{8}[A-HJ-NP-TV-Z]\b/gi, () => { found = true; return "[DNI oculto]"; })
+    .replace(/\bNHC\s*:?\s*\d{4,}\b/gi, () => { found = true; return "[NHC oculto]"; })
+    .replace(/\b\d{6,}\b/g, () => { found = true; return "[número oculto]"; });
+  return { out, found };
+}
+
+function loadHistory() { try { return JSON.parse(localStorage.getItem("empatia-hist") || "[]"); } catch (e) { return []; } }
+function saveHistory(h) { try { localStorage.setItem("empatia-hist", JSON.stringify(h.slice(-8))); } catch (e) {} }
+
+function scoreItems(list, keys) {
+  return keys.map(([k, d]) => {
+    const f = (Array.isArray(list) ? list : []).find(x => String(x.item).toUpperCase() === k.toUpperCase()) || {};
+    let p = Math.max(0, Math.min(2, Math.round(Number(f.puntos) || 0)));
+    if (p > 0 && !String(f.cita || "").trim()) p = 0;
+    return { k, d, p, cita: f.cita || "", com: f.comentario || "" };
+  });
+}
+
+
+/* ---------- Sesión ---------- */
+function addMsg(kind, text, extra) {
+  const d = document.createElement("div");
+  d.className = "msg " + kind;
+  const who = kind === "patient" ? currentCase().name : kind === "pro" ? "Tú" : kind === "hint" ? "Pista" : "";
+  d.innerHTML = (who ? `<div class="who">${esc(who)}${extra || ""}</div>` : "") + esc(text);
+  $("log").appendChild(d);
+  $("log").scrollTop = $("log").scrollHeight;
+  return d;
+}
+function setEmotion(v, why, delta) {
+  state.emotion = Math.max(0, Math.min(10, Math.round(v)));
+  const c = currentCase();
+  $("avatarWrap").innerHTML = avatarHTML(c, state.emotion);
+  const stg = document.querySelector(".stage");
+  if (stg) stg.style.setProperty("--emo", emoColor(state.emotion));
+  $("meterDot").style.left = (state.emotion * 10) + "%";
+  $("meterDot").style.background = emoColor(state.emotion);
+  $("emoLabel").textContent = c.emocion.charAt(0).toUpperCase() + c.emocion.slice(1) + " ·";
+  $("emoVal").textContent = state.emotion;
+  $("emoWhy").textContent = why || "";
+  const d = $("emoDelta");
+  if (delta) {
+    d.className = "delta " + (delta > 0 ? "up" : "down");
+    d.textContent = delta > 0 ? `▲ +${delta} más alterado` : `▼ ${delta} más calmado`;
+  } else d.className = "delta hidden";
+}
+function tick() {
+  const s = Math.floor((Date.now() - state.start) / 1000), lim = currentLevel().minutes * 60;
+  $("clock").textContent = `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  $("timeFill").style.width = Math.min(100, s / lim * 100) + "%";
+  if (s >= lim && !state.timeWarned) {
+    state.timeWarned = true;
+    $("timebar").classList.add("over");
+    $("timeMsg").textContent = "Tiempo cumplido: cierra la conversación";
+  }
+}
+let toastTimer = null;
+function showHint(text) {
+  $("toastText").textContent = text;
+  $("toast").classList.remove("hidden");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $("toast").classList.add("hidden"), 15000);
+}
+$("toastClose").onclick = () => $("toast").classList.add("hidden");
+
+/* ---------- Conversación por voz ---------- */
+const V = { phase: "idle", buf: "", partial: "", timer: null, autoOK: true, stopping: false, resume: false, restarts: 0 };
+const SILENCE_MS = 2800;
+state.autoSend = false;
+function setPhase(p, sub) {
+  V.phase = p;
+  const n = currentCase().name;
+  const texts = {
+    speaking: [`${n} está hablando…`, "Pulsa el micrófono si quieres interrumpir."],
+    listening: ["Te escucho…", state.autoSend ? "Cuando termines, haz una pausa de 3 segundos o pulsa el micrófono." : "Habla con calma. Cuando termines, pulsa el micrófono o la barra espaciadora."],
+    thinking: [`${n} está pensando…`, ""],
+    ready: ["Tu turno", "Pulsa el micrófono (o la barra espaciadora) y responde."],
+    ended: ["Conversación terminada", "Pulsa Finalizar para ver el informe."]
+  };
+  const [a, b] = texts[p] || ["", ""];
+  $("vStatus").textContent = a;
+  $("vSub").textContent = sub || b;
+  $("avatarWrap").classList.toggle("speaking", p === "speaking");
+  $("bigMic").classList.toggle("listening", p === "listening");
+  $("bigMic").setAttribute("aria-label", p === "listening" ? "Terminar y enviar" : "Hablar");
+  $("bigMic").disabled = p === "thinking" || p === "ended";
+}
+function setCaption(text, mine) {
+  if (mine) { $("mine").textContent = text ? "Tú: " + text : ""; return; }
+  $("caption").textContent = text ? "«" + text + "»" : "";
+  $("mine").textContent = "";
+}
+async function patientSpeaks(text) {
+  setCaption(text, false);
+  if (!state.ttsOn) { setPhase(state.ended ? "ended" : "ready"); return; }
+  setPhase("speaking");
+  const sid = state.sid;
+  await speakAsync(text);
+  if (V.phase !== "speaking" || sid !== state.sid) return;
+  if (state.ended) { setPhase("ended"); return; }
+  setPhase("ready");
+  if (V.autoOK && dict && state.mode === "voice") {
+    await new Promise(r => setTimeout(r, 350));
+    if (V.phase !== "ready" || sid !== state.sid || state.busy) return;
+    dict.start().catch(() => { V.autoOK = false; });
+  }
+}
+function armSilence() {
+  clearTimeout(V.timer);
+  if (!state.autoSend) { hideSbar(); return; }
+  const heard = (V.buf + V.partial).trim().length > 0;
+  const ms = heard ? SILENCE_MS : 12000;
+  V.timer = setTimeout(finishListening, ms);
+  const bar = $("sbar");
+  if (bar) {
+    bar.classList.toggle("on", heard);
+    const fill = bar.firstElementChild;
+    fill.style.transition = "none"; fill.style.width = "0%";
+    void fill.offsetWidth;
+    if (heard) { fill.style.transition = `width ${ms}ms linear`; fill.style.width = "100%"; }
+  }
+}
+function hideSbar() { const bar = $("sbar"); if (bar) bar.classList.remove("on"); }
+async function finishListening() {
+  clearTimeout(V.timer);
+  if (V.phase !== "listening") return;
+  V.stopping = true;
+  try { await dict.stop(); } catch (e) {}
+  commitVoice();
+  V.stopping = false;
+}
+function commitVoice() {
+  if (V.phase !== "listening") return;
+  clearTimeout(V.timer); hideSbar();
+  const text = (V.buf + V.partial).trim();
+  V.buf = ""; V.partial = "";
+  if (!text) { setPhase("ready", "No te he oído. Pulsa el micrófono y vuelve a intentarlo."); return; }
+  setCaption(text, true);
+  setPhase("thinking");
+  send(text);
+}
+function micPress() {
+  if (!dict || state.busy || state.ended || state.mode !== "voice") return;
+  if (V.phase === "listening") { finishListening(); return; }
+  if (V.phase === "thinking") return;
+  const p = dict.start();
+  if (V.phase === "speaking") { V.phase = "ready"; stopSpeaking(); }
+  p.catch(e => {
+    if (e && e.code === "not_granted") switchMode("text", "No hay permiso para el micrófono. Puedes seguir escribiendo.");
+    else setPhase("ready", "No he podido activar el micrófono. Pulsa otra vez.");
+  });
+}
+function applyMode() {
+  const voice = state.mode === "voice";
+  $("voiceDock").classList.toggle("hidden", !voice);
+  $("textDock").classList.toggle("hidden", voice);
+  $("toVoice").classList.toggle("hidden", !dict);
+}
+function switchMode(mode, msg) {
+  if (mode === "text") {
+    if (state.listening && dict) dict.stop().catch(() => {});
+    clearTimeout(V.timer);
+    V.phase = "idle";
+  }
+  state.mode = mode;
+  applyMode();
+  if (msg) addMsg("sys", msg);
+  if (mode === "voice") setPhase(state.ended ? "ended" : "ready");
+  else if (!state.ended) $("input").focus();
+}
+function setTTS(on) {
+  state.ttsOn = on;
+  $("ttsBtn").setAttribute("aria-pressed", String(on));
+  $("ttsBtn").textContent = "Voz: " + (on ? "sí" : "no");
+  $("ttsBtn").setAttribute("aria-label", "Voz del personaje " + (on ? "activada" : "desactivada"));
+}
+
+function startSession() {
+  state.alias = $("alias").value.trim() || "Sin seudónimo";
+  state.role = $("role").value;
+  state.turns = []; state.hintsUsed = 0; state.ended = false; state.timeWarned = false; state.busy = false;
+  state.sid = (state.sid || 0) + 1;
+  const c = currentCase(), l = currentLevel();
+  $("log").innerHTML = "";
+  $("input").disabled = false; $("input").value = "";
+  $("hintCount").textContent = l.n === 3 ? "Sin pistas (nivel 3)" : "0 pistas";
+  $("toast").classList.add("hidden");
+  $("sTitle").textContent = c.title;
+  $("sMeta").textContent = `${c.family} · Nivel ${l.n} · ${state.alias}`;
+  $("limit").textContent = `${l.minutes}:00`;
+  $("timeMsg").textContent = ""; $("timebar").classList.remove("over");
+  $("pName").textContent = `${c.name}, ${c.age}`;
+  setEmotion(c.inicio, "Punto de partida del caso", 0);
+  addMsg("sys", c.descr);
+  if (state.mode === "voice" && !dict) state.mode = "text";
+  setTTS(state.mode === "voice" ? true : state.ttsOn);
+  V.autoOK = true;
+  applyMode();
+  const first = c.opening[state.lang];
+  state.turns.push({ who: "patient", text: first });
+  addMsg("patient", first);
+  state.start = Date.now();
+  clearInterval(state.timer); state.timer = setInterval(tick, 1000); tick();
+  show("viewSession");
+  if (state.mode === "voice") patientSpeaks(first);
+  else { setCaption(first, false); $("input").focus(); speakAsync(first); }
+}
+
+async function send(spoken) {
+  if (state.busy || state.ended) return;
+  const fromVoice = typeof spoken === "string";
+  let text = (fromVoice ? spoken : $("input").value).trim();
+  if (!text) return;
+  const m = maskPII(text);
+  text = m.out;
+  if (m.found) addMsg("sys", "He ocultado un dato que parecía identificar a una persona real. Usa solo datos ficticios.");
+  if (!fromVoice) { $("input").value = ""; setCaption(text, true); }
+  state.turns.push({ who: "pro", text });
+  const proEl = addMsg("pro", text);
+  state.busy = true; $("sendBtn").disabled = true;
+  if (!fromVoice) setPhase("thinking");
+  const typing = addMsg("sys", "");
+  typing.innerHTML = `<span class="typing"><span class="spinner"></span>${esc(currentCase().name)} está pensando…</span>`;
+
+  const wantHint = state.level === 1 || (state.level === 2 && state.hintsUsed < 3);
+  const sid = state.sid;
+  const slow = setTimeout(() => {
+    if (sid !== state.sid || !typing.isConnected) return;
+    typing.innerHTML = `<span class="typing"><span class="spinner"></span>${esc(currentCase().name)} está pensando… tarda un poco más de lo normal</span>`;
+    if (V.phase === "thinking") $("vSub").textContent = "Tarda un poco más de lo normal. Espera unos segundos.";
+  }, 8000);
+  try {
+    let r;
+    try { r = await askJSON(patientPrompt(), "quick", 18000); }
+    catch (e1) {
+      if (sid !== state.sid) return;
+      if (e1 && e1.code === "not_granted") throw e1;
+      if (e1 && e1.code === "rate_limited") await new Promise(res => setTimeout(res, 3000));
+      if (sid !== state.sid) return;
+      r = await askJSON(patientPrompt(), "quick", 25000);
+    }
+    clearTimeout(slow);
+    if (sid !== state.sid) return;
+    typing.remove();
+    const reply = String(r.respuesta || "").trim() || "…";
+    state.turns.push({ who: "patient", text: reply });
+    const prev = state.emotion;
+    const next = Number.isFinite(Number(r.intensidad)) ? Number(r.intensidad) : prev;
+    setEmotion(next, r.motivo_cambio, Math.max(0, Math.min(10, Math.round(next))) - prev);
+    const delta = state.emotion - prev;
+    addMsg("patient", reply, delta ? ` <span class="chip">${delta > 0 ? "▲ +" + delta : "▼ " + delta}</span>` : "");
+    if (r.fin === true || state.emotion >= 10) { state.ended = true; $("input").disabled = true; }
+    state.busy = false; $("sendBtn").disabled = false;
+    if (state.mode === "voice") patientSpeaks(reply);
+    else { setCaption(reply, false); setPhase(state.ended ? "ended" : "ready"); speakAsync(reply); }
+    const coach = wantHint && !state.ended ? await askJSON(coachPrompt(), "quick", 15000).catch(() => null) : null;
+    if (sid !== state.sid) return;
+    if (coach && coach.pista && !state.ended) {
+      state.hintsUsed++;
+      addMsg("hint", coach.pista);
+      showHint(coach.pista);
+      $("hintCount").textContent = `${state.hintsUsed} ${state.hintsUsed === 1 ? "pista" : "pistas"}`;
+    }
+    if (state.ended) {
+      addMsg("sys", state.emotion >= 10 ? "La conversación se ha roto: el personaje pide hablar con otro profesional." : "El personaje ha cerrado la conversación.");
+      $("endBtn").className = "btn";
+      $("endBtn").textContent = "Ver informe";
+    }
+  } catch (e) {
+    clearTimeout(slow);
+    if (sid !== state.sid) return;
+    typing.remove();
+    state.turns.pop();
+    proEl.remove();
+    const msg = e && e.code === "rate_limited" ? "La IA está saturada en este momento." : e && e.code === "not_granted" ? "No se ha dado permiso para usar la IA en esta página. Recarga y acéptalo para seguir." : e && e.code === "timeout" ? `${currentCase().name} no ha respondido a tiempo.` : "No he podido obtener la respuesta del personaje.";
+    const m = addMsg("sys", msg + " ");
+    if (!(e && e.code === "not_granted")) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "linkbtn"; b.textContent = "Reenviar mi respuesta";
+      b.onclick = () => { m.remove(); send(text); };
+      m.appendChild(b);
+    }
+    if (fromVoice) setPhase("ready", "No se ha enviado. Pulsa «Reenviar mi respuesta» en la transcripción o vuelve a hablar.");
+    else { $("input").value = text; setPhase("ready"); }
+  } finally {
+    state.busy = false; $("sendBtn").disabled = false;
+    if (!state.ended && state.mode === "text") $("input").focus();
+  }
+}
+
+/* ---------- Finalizar ---------- */
+function askFinish() {
+  const proTurns = state.turns.filter(t => t.who === "pro").length;
+  const canEval = proTurns >= 2 && !state.busy;
+  $("cOk").disabled = !canEval;
+  $("cText").textContent = canEval
+    ? "Puedes terminar y ver tu informe, o salir sin evaluar. Si sales, la conversación no se guarda."
+    : (state.busy ? "Espera a que el personaje termine de responder para poder evaluar. También puedes salir sin evaluar." : "Para ver un informe necesitas al menos 2 intervenciones. Puedes salir sin evaluar; la conversación no se guarda.");
+  $("cCancel").textContent = state.ended ? "Volver" : "Seguir hablando";
+  $("confirm").classList.remove("hidden");
+  (canEval ? $("cOk") : $("cExit")).focus();
+}
+function exitSession() {
+  clearInterval(state.timer);
+  clearTimeout(V.timer);
+  V.phase = "idle";
+  if (state.listening && dict) dict.stop().catch(() => {});
+  stopSpeaking();
+  state.sid = (state.sid || 0) + 1;
+  state.ended = true;
+  state.busy = false;
+  $("confirm").classList.add("hidden");
+  $("endBtn").className = "btn ghost"; $("endBtn").textContent = "Finalizar";
+  renderSetup();
+  show("viewSetup");
+}
+$("cCancel").onclick = () => $("confirm").classList.add("hidden");
+$("cOk").onclick = () => { $("confirm").classList.add("hidden"); finish(); };
+$("cExit").onclick = exitSession;
+$("confirm").addEventListener("keydown", e => { if (e.key === "Escape") $("confirm").classList.add("hidden"); });
+
+async function finish() {
+  clearInterval(state.timer);
+  clearTimeout(V.timer);
+  V.phase = "idle";
+  if (state.listening && dict) dict.stop().catch(() => {});
+  stopSpeaking();
+  state.secs = Math.floor((Date.now() - state.start) / 1000);
+  show("viewReport");
+  $("viewReport").innerHTML = `<div class="card"><span class="spinner"></span>El evaluador está puntuando la transcripción con la rúbrica…</div>`;
+  try { renderReport(await askJSON(evalPrompt(), "complex", 90000), state.secs); }
+  catch (e) {
+    $("viewReport").innerHTML = `<div class="card" style="display:grid;gap:10px"><b>No he podido generar el informe.</b><div><button class="btn" id="retryEval" type="button">Reintentar</button></div></div>`;
+    $("retryEval").onclick = finish2;
+  }
+}
+async function finish2() {
+  $("viewReport").innerHTML = `<div class="card"><span class="spinner"></span>Reintentando la evaluación…</div>`;
+  try { renderReport(await askJSON(evalPrompt(), "complex", 90000), state.secs); }
+  catch (e) { $("viewReport").innerHTML = `<div class="card">La evaluación sigue fallando. Vuelve a intentarlo en un momento.</div>`; }
+}
+
+/* ---------- Informe ---------- */
+function renderReport(r, secs) {
+  const c = currentCase();
+  const F = frameworkFor();
+  const blockKeys = F.items;
+  const bItems = scoreItems(r.bloque, blockKeys);
+  const nItems = scoreItems(r.nurse, F.nurse);
+  const careArr = (Array.isArray(r.care) ? r.care : []).slice(0, 10).map(x => Math.max(1, Math.min(5, Math.round(Number(x && typeof x === "object" ? x.puntos : x) || 3))));
+  while (careArr.length < 10) careArr.push(3);
+  const care = careArr.reduce((s, v) => s + v, 0);
+  const pens = (Array.isArray(r.penalizaciones) ? r.penalizaciones : []).filter(p => p && String(p.cita || "").trim());
+  const bScore = Math.round(bItems.reduce((s, i) => s + i.p, 0) / (bItems.length * 2) * 40);
+  const nScore = Math.round(nItems.reduce((s, i) => s + i.p, 0) / (nItems.length * 2) * 40);
+  const gScore = Math.round((care - 10) / 40 * 20);
+  const pen = Math.min(10, pens.length * 2);
+  const total = Math.max(0, bScore + nScore + gScore - pen);
+  state.lastTotal = total; state.lastScores = { b: bScore, n: nScore, g: gScore, pen };
+  const hist = loadHistory(); hist.push({ t: total, c: c.id, l: state.level }); saveHistory(hist);
+
+  const color = total >= 75 ? "var(--calm)" : total >= 50 ? "var(--mid)" : "var(--high)";
+  const word = total >= 75 ? "Muy bien" : total >= 50 ? "En progreso" : "A reforzar";
+  const R = 52, C = 2 * Math.PI * R;
+  const ring = `<svg width="132" height="132" viewBox="0 0 120 120" role="img" aria-label="Puntuación ${total} de 100, ${word}">
+    <circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--sunk)" stroke-width="10"/>
+    <circle cx="60" cy="60" r="${R}" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(total / 100 * C).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 60 60)"/>
+    <text x="60" y="62" text-anchor="middle" font-size="32" font-weight="700" fill="var(--ink)" font-family="Bricolage Grotesque, sans-serif">${total}</text>
+    <text x="60" y="80" text-anchor="middle" font-size="11" fill="var(--muted)">${word}</text></svg>`;
+  const bar = (label, val, max, cls) => `<div class="bar-item ${cls || ""}"><div class="lbl"><span>${label}</span><span>${val} / ${max}</span></div><div class="bar"><span style="width:${Math.max(0, val) / max * 100}%"></span></div></div>`;
+  const mm = Math.floor(secs / 60), ss = String(secs % 60).padStart(2, "0");
+  const mejoras = Array.isArray(r.mejoras) ? r.mejoras : [];
+  const top = mejoras[0], rest = mejoras.slice(1);
+  const stWord = p => p === 2 ? "Logrado" : p === 1 ? "Parcial" : "Ausente";
+  const pips = p => `<span class="pips" aria-hidden="true"><i class="${p >= 1 ? "on" : ""}"></i><i class="${p >= 2 ? "on" : ""}"></i></span>`;
+  const tiles = (items, map, group) => items.map((i, ix) => {
+    const [L, n] = (map[i.k] || SHORT[i.k] || [i.k, i.k]);
+    return `<button type="button" class="tile s${i.p}" data-g="${group}" data-i="${ix}" aria-expanded="false" aria-controls="det-${group}"><span class="L">${esc(L)}</span><span class="n">${esc(n)}</span><span class="st">${pips(i.p)}${stWord(i.p)}</span></button>`;
+  }).join("");
+  const maxH = Math.max(100, ...hist.map(h => h.t));
+  const fwName = F.name, fwSub = F.sub;
+
+  $("viewReport").innerHTML = `
+    <div class="card r-head">
+      ${ring}
+      <div>
+        <h1>Informe de la sesión</h1>
+        <div class="r-meta">${esc(c.title)} · ${esc(c.name)} · Nivel ${state.level} · ${esc(state.alias)} · ${esc(state.role)} · ${mm}:${ss} min · ${state.hintsUsed} ${state.hintsUsed === 1 ? "pista" : "pistas"}</div>
+        <p class="r-sum">${esc(r.resumen || "")}</p>
+        <div class="bars">
+          ${bar(F.short, bScore, 40)}
+          ${bar(F.nurse.length === 3 ? "NURSE (N, U, R)" : "NURSE", nScore, 40)}
+          ${bar("Empatía percibida · CARE", gScore, 20)}
+          ${bar("Penalizaciones", -pen, 10, "pen")}
+        </div>
+      </div>
+    </div>
+
+    ${top ? `<div class="next" role="region" aria-label="Lo que más te ayudaría la próxima vez">
+      <span class="k">Lo que más te ayudaría la próxima vez</span>
+      <span class="moment">Cuando ${esc(c.name)} dijo: «${esc(top.momento)}»</span>
+      <span class="say">«${esc(top.alternativa)}»</span>
+      <span class="why">${esc(top.problema)}</span>
+    </div>` : ""}
+
+    <div class="card fw">
+      <h2>${fwName} <small>${fwSub} · pulsa una letra para ver la evidencia</small></h2>
+      <div class="tiles">${tiles(bItems, SHORT, "b")}</div>
+      <div class="detail" id="det-b" aria-live="polite"></div>
+    </div>
+    <div class="card fw">
+      <h2>${esc(F.nurseName)} <small>Cómo respondiste a la emoción</small></h2>
+      <div class="tiles">${tiles(nItems, SHORT_N, "n")}</div>
+      <div class="detail" id="det-n" aria-live="polite"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card"><h2>Lo que hiciste bien</h2><ul class="clean">${(r.fortalezas || []).map(f => `<li>${esc(f)}</li>`).join("")}</ul></div>
+      <div class="card"><h2>Otras mejoras</h2>
+        ${rest.length ? rest.map(m => `<div class="improve"><span class="muted">Cuando dijo: «${esc(m.momento)}»</span><span>${esc(m.problema)}</span><span class="alt">Podrías decir: «${esc(m.alternativa)}»</span></div>`).join("") : `<span class="muted">Ninguna más.</span>`}
+        <div><span class="muted">Penalizaciones</span><div class="pen-list" style="margin-top:6px">${pens.length ? pens.map(p => `<span class="chip" title="«${esc(p.cita)}»">−2 · ${esc(p.tipo)}</span>`).join("") : `<span class="muted">Ninguna</span>`}</div></div>
+        <details open><summary>Empatía percibida por ${esc(c.name)} (CARE): ${care}/50</summary><ul class="clean" style="margin-top:6px">${CARE_ITEMS.map((t, i) => `<li>${esc(t)}: <b>${careArr[i]}</b>/5</li>`).join("")}</ul></details>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card"><h2>Tu evolución</h2>
+        <div class="history">${hist.map((h, i) => `<div class="${i === hist.length - 1 ? "last" : ""}" style="height:${Math.max(4, h.t / maxH * 100)}%" title="Sesión ${i + 1}: ${h.t}"><span>${h.t}</span></div>`).join("")}</div>
+        <span class="muted">Sesiones en este navegador. En el piloto se guardan con tu seudónimo y Docencia ve la evolución de la 1.ª a la 5.ª.</span>
+      </div>
+      <div class="card"><h2>¿Qué te ha parecido?</h2>
+        <div><span class="muted">Utilidad</span><div class="scale" data-q="util">${[1,2,3,4,5].map(n => `<button type="button" aria-pressed="false" data-v="${n}" aria-label="Utilidad ${n} de 5">${n}</button>`).join("")}</div></div>
+        <div><span class="muted">Realismo del personaje</span><div class="scale" data-q="real">${[1,2,3,4,5].map(n => `<button type="button" aria-pressed="false" data-v="${n}" aria-label="Realismo ${n} de 5">${n}</button>`).join("")}</div></div>
+        <label class="sr-only" for="fbText">Comentario</label><textarea id="fbText" rows="2" placeholder="¿Qué mejorarías?"></textarea>
+        <span class="muted">En la demo tu valoración solo se muestra aquí; en el piloto se guardará con tu seudónimo.</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <details><summary>Ver la transcripción completa (${state.turns.length} turnos)</summary>
+        <div style="display:grid; gap:6px; margin-top:10px; font-size:14px">${state.turns.map((t, i) => `<div><b>${t.who === "patient" ? esc(c.name) : "Tú"}:</b> ${esc(t.text)}</div>`).join("")}</div>
+      </details>
+    </div>
+
+    <div class="actions-row">
+      <button class="btn" type="button" id="againBtn">Repetir con ${esc(c.name)}</button>
+      <button class="btn ghost" type="button" id="newBtn">Elegir otro caso o nivel</button>
+    </div>`;
+
+  const groups = { b: bItems, n: nItems };
+  const openTile = (g, ix) => {
+    const it = groups[g][ix];
+    document.querySelectorAll(`.tile[data-g="${g}"]`).forEach(t => t.setAttribute("aria-expanded", String(Number(t.dataset.i) === ix)));
+    $("det-" + g).innerHTML = `<b>${esc(it.d)}</b><span>${stWord(it.p)}${it.com ? " · " + esc(it.com) : ""}</span><span class="q ${it.cita ? "" : "none"}">${it.cita ? "«" + esc(it.cita) + "»" : "Sin evidencia en la transcripción."}</span>`;
+  };
+  document.querySelectorAll(".tile").forEach(t => t.onclick = () => openTile(t.dataset.g, Number(t.dataset.i)));
+  ["b", "n"].forEach(g => { const ix = groups[g].findIndex(i => i.p < 2); openTile(g, ix < 0 ? 0 : ix); });
+  document.querySelectorAll(".scale").forEach(g => g.querySelectorAll("button").forEach(b => b.onclick = () => g.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(Number(x.dataset.v) <= Number(b.dataset.v))))));
+  $("againBtn").onclick = startSession;
+  $("newBtn").onclick = () => { $("endBtn").className = "btn ghost"; $("endBtn").textContent = "Finalizar"; renderSetup(); show("viewSetup"); };
+}
+
+/* ---------- Arranque ---------- */
+$("startBtn").onclick = startSession;
+const goHome = () => { if (!$("viewSession").classList.contains("hidden")) askFinish(); else if (!$("viewReport").classList.contains("hidden")) { renderSetup(); show("viewSetup"); } };
+$("brand").onclick = goHome;
+$("brand").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goHome(); } });
+$("sendBtn").onclick = () => send();
+$("endBtn").onclick = askFinish;
+$("input").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+$("ttsBtn").onclick = () => { setTTS(!state.ttsOn); voiceFails = 0; if (!state.ttsOn) { stopSpeaking(); if (V.phase === "speaking") setPhase("ready"); } };
+$("micBtn").onclick = () => {
+  if (!dict) return;
+  if (state.listening) { dict.stop().catch(() => {}); return; }
+  dict.start().catch(e => { if (e && e.code === "not_granted") $("micBtn").classList.add("hidden"); });
+};
+$("bigMic").onclick = micPress;
+$("autoSend").onchange = e => {
+  state.autoSend = e.target.checked;
+  if (V.phase === "listening") { setPhase("listening"); armSilence(); }
+};
+$("toText").onclick = () => switchMode("text", "");
+$("toVoice").onclick = () => switchMode("voice", "");
+document.addEventListener("keydown", e => {
+  if (e.code !== "Space" || state.mode !== "voice" || $("viewSession").classList.contains("hidden") || !$("confirm").classList.contains("hidden")) return;
+  const tag = (e.target && e.target.tagName) || "";
+  if (/^(TEXTAREA|INPUT|SELECT|BUTTON)$/.test(tag)) return;
+  e.preventDefault();
+  micPress();
+});
+
+$("voiceSel").onchange = e => {
+  state.voiceByCase[state.caseId] = e.target.value;
+  try { localStorage.setItem("empatia-voces", JSON.stringify(state.voiceByCase)); } catch (err) {}
+  if (tts) { stopSpeaking(); const was = state.ttsOn; state.ttsOn = true; speakAsync(currentCase().opening[state.lang]); state.ttsOn = was; }
+};
+
+$("voiceTest").onclick = () => { const was = state.ttsOn; state.ttsOn = true; stopSpeaking(); speakAsync(currentCase().opening[state.lang]); state.ttsOn = was; };
+function applyTheme(t) {
+  if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+  else document.documentElement.removeAttribute("data-theme");
+  document.querySelectorAll("#themeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.t === t)));
+  try { localStorage.setItem("empatia-tema", t); } catch (e) {}
+}
+let savedTheme = "light";
+try { savedTheme = localStorage.getItem("empatia-tema") || "light"; } catch (e) {}
+applyTheme(savedTheme);
+document.querySelectorAll("#themeSeg button").forEach(b => b.onclick = () => applyTheme(b.dataset.t));
+renderSetup();
+show("viewSetup");
+$("startBtn").disabled = true;
+$("startBtn").textContent = "Conectando con la IA…";
+
+(async () => {
+  try { sample = await claude.use("sample"); } catch (e) { sample = null; }
+  if (!sample) {
+    $("aiNotice").classList.remove("hidden");
+    $("aiNotice").textContent = "No se ha podido conectar con el servidor. Recarga la página.";
+    $("startBtn").textContent = "IA no disponible";
+    return;
+  }
+  $("startBtn").disabled = false;
+  try { tts = await claude.use("tts"); } catch (e) { tts = null; }
+  if (!tts) $("ttsBtn").classList.add("hidden");
+  try { dict = await claude.use("dictation"); } catch (e) { dict = null; }
+  if (!dict) state.mode = "text";
+  renderSetup();
+  if (!dict) return;
+  $("micBtn").classList.remove("hidden");
+  let base = "";
+  dict.onState(({ state: s, reason }) => {
+    state.listening = s === "listening";
+    if (state.mode === "voice") {
+      if (state.listening) {
+        if (V.resume) { V.resume = false; armSilence(); return; }
+        V.buf = ""; V.partial = ""; V.restarts = 0;
+        stopSpeaking();
+        setPhase("listening"); setCaption("", true); armSilence();
+      } else if (V.phase === "listening") {
+        // El navegador cortó el dictado sin que lo pidiéramos: lo reanudamos sin perder lo dicho
+        const userStop = V.stopping || reason === "viewer_stopped" || reason === "not_granted";
+        if (!userStop && V.restarts < (state.autoSend ? 3 : 40)) {
+          V.restarts++;
+          if (V.partial) { V.buf += V.partial + " "; V.partial = ""; }
+          V.resume = true;
+          dict.start().catch(() => { V.resume = false; setTimeout(commitVoice, 200); });
+          return;
+        }
+        setTimeout(commitVoice, 300);
+      }
+      return;
+    }
+    $("micBtn").setAttribute("aria-pressed", String(state.listening));
+    $("micBtn").textContent = state.listening ? "Parar dictado" : "Dictar";
+    $("micState").textContent = state.listening ? "Escuchando…" : "";
+    if (state.listening) base = $("input").value ? $("input").value.trim() + " " : "";
+  });
+  dict.onPartial(({ text }) => {
+    if (state.mode === "voice") { V.partial = text; setCaption(V.buf + text, true); armSilence(); return; }
+    $("input").value = base + text;
+  });
+  dict.onFinal(({ text }) => {
+    if (state.mode === "voice") { V.buf += text + " "; V.partial = ""; setCaption(V.buf, true); armSilence(); return; }
+    base = base + text + " "; $("input").value = base;
+  });
+})();
+</script>
+<script>
+/* ===== Capa de la web: acceso, consentimiento, guardado, historial, panel de Docencia y baja ===== */
+state.provider = "anthropic";
+state.history = [];
+state.profile = null;
+state.dbId = null;
+state.viewOnly = false;
+
+const APP_URL = location.origin + location.pathname;
+const VIEWS_EXTRA = ["viewLogin", "viewConsent", "viewHistory", "viewAdmin"];
+const _show = window.show;
+window.show = function (view) {
+  VIEWS_EXTRA.forEach(v => $(v).classList.toggle("hidden", v !== view));
+  _show(view);
+  document.querySelectorAll("#userNav [data-nav]").forEach(b => b.setAttribute("aria-current", String(b.dataset.nav === view)));
+};
+function fmtDate(s) { try { return new Date(s).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" }); } catch (e) { return s || ""; } }
+const caseTitle = id => (CASES.find(c => c.id === id) || { title: id }).title;
+function toastMsg(text) { showHint(text); }
+
+/* ---------- Acceso ---------- */
+function showLogin(msg) {
+  $("userBox").classList.add("hidden");
+  $("loginMsg").textContent = msg || "";
+  $("loginForm").classList.remove("hidden");
+  $("loginSent").classList.add("hidden");
+  show("viewLogin");
+}
+$("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const email = $("loginEmail").value.trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $("loginMsg").textContent = "Escribe un email válido."; return; }
+  $("loginBtn").disabled = true; $("loginMsg").textContent = "";
+  const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false, emailRedirectTo: APP_URL } });
+  $("loginBtn").disabled = false;
+  if (error) {
+    $("loginMsg").textContent = /signups not allowed|not found|not allowed/i.test(error.message)
+      ? "Este email no está dado de alta en el piloto. Pide acceso a Docencia."
+      : /rate|seconds/i.test(error.message) ? "Has pedido varios enlaces seguidos. Espera un minuto y vuelve a intentarlo." : "No se ha podido enviar el enlace: " + error.message;
+    return;
+  }
+  $("sentTo").textContent = email;
+  $("loginForm").classList.add("hidden");
+  $("loginSent").classList.remove("hidden");
+});
+$("loginAgain").onclick = () => { $("loginForm").classList.remove("hidden"); $("loginSent").classList.add("hidden"); };
+
+async function loadProfile() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return null;
+  const { data, error } = await sb.from("profiles").select("id, pseudonym, role_label, is_admin, consent_at").eq("id", user.id).single();
+  if (error) return null;
+  return data;
+}
+async function enterApp() {
+  const p = await loadProfile();
+  if (!p) { await sb.auth.signOut(); showLogin("No se ha encontrado tu perfil. Pide acceso a Docencia."); return; }
+  state.profile = p;
+  $("userBox").classList.remove("hidden");
+  $("userPseudo").textContent = p.pseudonym;
+  $("navAdmin").classList.toggle("hidden", !p.is_admin);
+  $("alias").value = p.pseudonym;
+  $("aliasShow").textContent = p.pseudonym;
+  if (p.role_label && ROLE_SHORT.some(r => r[0] === p.role_label)) { $("role").value = p.role_label; state.role = p.role_label; }
+  if (!p.consent_at) { show("viewConsent"); return; }
+  await loadHistoryDB();
+  renderSetup();
+  show("viewSetup");
+}
+
+/* ---------- Consentimiento ---------- */
+$("consentChk").onchange = e => { $("consentBtn").disabled = !e.target.checked; };
+$("consentBtn").onclick = async () => {
+  $("consentBtn").disabled = true;
+  const { error } = await sb.from("profiles").update({ consent_at: new Date().toISOString() }).eq("id", state.profile.id);
+  if (error) { $("consentMsg").textContent = "No se ha podido guardar: " + error.message; $("consentBtn").disabled = false; return; }
+  state.profile.consent_at = new Date().toISOString();
+  await loadHistoryDB();
+  renderSetup();
+  show("viewSetup");
+};
+$("consentNo").onclick = async () => { await sb.auth.signOut(); showLogin("Has salido sin aceptar. Puedes volver cuando quieras."); };
+
+/* ---------- Estamento: se guarda en el perfil ---------- */
+const _pickRole = window.pickRole;
+window.pickRole = function (v) {
+  _pickRole(v);
+  if (state.profile) sb.from("profiles").update({ role_label: v }).eq("id", state.profile.id).then(() => {});
+};
+
+/* ---------- Modelo de IA ---------- */
+const _renderSetup = window.renderSetup;
+window.renderSetup = function () {
+  _renderSetup();
+  seg("providerSeg", [["anthropic", "Claude"], ["openai", "GPT"]], state.provider, v => { state.provider = v; renderSetup(); });
+  $("providerHelp").textContent = state.provider === "openai" ? "GPT (OpenAI) interpreta al personaje, da las pistas y evalúa." : "Claude (Anthropic) interpreta al personaje, da las pistas y evalúa.";
+};
+
+/* ---------- Guardado de sesiones ---------- */
+function window_hist() { return state.history; }
+window.loadHistory = () => state.history.map(h => ({ ...h }));
+window.saveHistory = () => {};
+async function loadHistoryDB() {
+  const { data } = await sb.from("sessions").select("id, case_id, level, total, started_at").eq("user_id", state.profile.id).not("total", "is", null).order("started_at", { ascending: true }).limit(20);
+  state.history = (data || []).map(r => ({ t: r.total, c: r.case_id, l: r.level }));
+}
+const _startSession = window.startSession;
+window.startSession = function () {
+  state.dbId = null;
+  _startSession();
+  const row = { user_id: state.profile.id, case_id: state.caseId, level: state.level, lang: state.lang, mode: state.mode, provider: state.provider, role_label: state.role || $("role").value };
+  sb.from("sessions").insert(row).select("id").single().then(({ data, error }) => {
+    if (error) { addMsg("sys", "Aviso: no se ha podido guardar el inicio de la sesión (" + error.message + ")."); return; }
+    state.dbId = data.id;
+  });
+};
+$("startBtn").onclick = () => window.startSession();
+const _exitSession = window.exitSession;
+window.exitSession = function () {
+  const id = state.dbId, secs = Math.floor((Date.now() - state.start) / 1000), turns = state.turns.slice();
+  _exitSession();
+  if (id) sb.from("sessions").update({ exited: true, ended_at: new Date().toISOString(), duration_s: secs, turns, hints: state.hintsUsed }).eq("id", id).then(() => {});
+};
+$("cExit").onclick = () => window.exitSession();
+
+const _renderReport = window.renderReport;
+window.renderReport = function (r, secs) {
+  _renderReport(r, secs);
+  if (state.viewOnly) { const ra = $("againBtn"); if (ra) ra.textContent = "Volver a practicar este caso"; return; }
+  const total = state.lastTotal;
+  if (state.dbId) {
+    sb.from("sessions").update({ ended_at: new Date().toISOString(), duration_s: secs, hints: state.hintsUsed, turns: state.turns, report: r, scores: state.lastScores || null, total }).eq("id", state.dbId)
+      .then(({ error }) => { if (error) toastMsg("No se ha podido guardar el informe: " + error.message); else loadHistoryDB(); });
+  }
+  wireFeedback();
+};
+function wireFeedback() {
+  const id = state.dbId;
+  if (!id) return;
+  const fb = { util: null, real: null, comment: "" };
+  let t = null;
+  const save = () => { clearTimeout(t); t = setTimeout(() => sb.from("sessions").update({ feedback: fb }).eq("id", id).then(() => {}), 600); };
+  document.querySelectorAll(".scale").forEach(g => g.querySelectorAll("button").forEach(b => b.addEventListener("click", () => { fb[g.dataset.q] = Number(b.dataset.v); save(); })));
+  const ta = $("fbText"); if (ta) ta.addEventListener("input", () => { fb.comment = ta.value.slice(0, 2000); save(); });
+  document.querySelectorAll(".report .muted").forEach(el => { if (/En la demo tu valoración/.test(el.textContent)) el.textContent = "Tu valoración se guarda con tu seudónimo y ayuda a mejorar el simulador."; });
+  document.querySelectorAll(".report .muted").forEach(el => { if (/Sesiones en este navegador/.test(el.textContent)) el.textContent = "Tus sesiones completadas, guardadas con tu seudónimo."; });
+}
+
+/* ---------- Mis sesiones ---------- */
+async function openHistory() {
+  show("viewHistory");
+  $("histList").innerHTML = `<div class="card"><span class="spinner"></span>Cargando tus sesiones…</div>`;
+  const { data, error } = await sb.from("sessions").select("id, case_id, level, lang, mode, provider, started_at, duration_s, total, exited, hints").eq("user_id", state.profile.id).order("started_at", { ascending: false }).limit(100);
+  if (error) { $("histList").innerHTML = `<div class="card">No se han podido cargar: ${esc(error.message)}</div>`; return; }
+  const done = (data || []).filter(r => r.total != null).reverse();
+  const maxH = 100;
+  $("histChart").innerHTML = done.length ? done.map((h, i) => `<div class="${i === done.length - 1 ? "last" : ""}" style="height:${Math.max(4, h.total / maxH * 100)}%" title="${esc(caseTitle(h.case_id))}: ${h.total}"><span>${h.total}</span></div>`).join("") : `<span class="muted">Aún no tienes sesiones con informe.</span>`;
+  $("histList").innerHTML = (data || []).length ? `<div class="card table-card"><table class="dtable"><thead><tr><th>Fecha</th><th>Caso</th><th>Nivel</th><th>Modelo</th><th>Duración</th><th>Nota</th><th></th></tr></thead><tbody>${data.map(r => `
+      <tr><td>${fmtDate(r.started_at)}</td><td>${esc(caseTitle(r.case_id))}</td><td>${r.level}</td><td>${r.provider === "openai" ? "GPT" : "Claude"}</td><td>${r.duration_s ? Math.floor(r.duration_s / 60) + ":" + String(r.duration_s % 60).padStart(2, "0") : "—"}</td>
+      <td>${r.total != null ? `<b>${r.total}</b>` : r.exited ? `<span class="chip">Sin evaluar</span>` : `<span class="chip">Incompleta</span>`}</td>
+      <td>${r.total != null ? `<button class="btn ghost small" data-open="${r.id}" type="button">Ver informe</button>` : ""}</td></tr>`).join("")}</tbody></table></div>` : `<div class="card">Todavía no has hecho ninguna sesión.</div>`;
+  document.querySelectorAll("[data-open]").forEach(b => b.onclick = () => openStoredReport(b.dataset.open));
+}
+async function openStoredReport(id) {
+  const { data: r, error } = await sb.from("sessions").select("*").eq("id", id).single();
+  if (error || !r || !r.report) { toastMsg("No se ha podido abrir el informe."); return; }
+  state.caseId = r.case_id; state.level = r.level; state.lang = r.lang; state.role = r.role_label || state.role;
+  if (r.role_label) $("role").value = r.role_label;
+  state.turns = r.turns || []; state.hintsUsed = r.hints || 0; state.alias = state.profile.pseudonym;
+  state.viewOnly = true;
+  show("viewReport");
+  try { _renderReport(r.report, r.duration_s || 0); } finally { state.viewOnly = false; }
+  const ra = $("againBtn"); if (ra) ra.textContent = "Volver a practicar este caso";
+}
+
+/* ---------- Panel de Docencia ---------- */
+async function openAdmin() {
+  if (!state.profile.is_admin) return;
+  show("viewAdmin");
+  $("adminUsers").innerHTML = `<span class="spinner"></span>Cargando…`;
+  $("adminSessions").innerHTML = "";
+  try {
+    const { users } = await fnJSON("admin", { action: "list" });
+    $("adminUsers").innerHTML = `<table class="dtable"><thead><tr><th>Email</th><th>Seudónimo</th><th>Estamento</th><th>Estado</th><th>Último acceso</th></tr></thead><tbody>${users.map(u => `
+      <tr><td>${esc(u.email)}</td><td><b>${esc(u.pseudonym || "—")}</b>${u.is_admin ? ` <span class="chip accent">Docencia</span>` : ""}</td><td>${esc(u.role_label || "—")}</td>
+      <td>${u.consent_at ? `<span class="chip accent">Activo</span>` : u.last_sign_in_at ? `<span class="chip">Sin consentimiento</span>` : `<span class="chip">Invitado</span>`}</td>
+      <td>${u.last_sign_in_at ? fmtDate(u.last_sign_in_at) : "—"}</td></tr>`).join("")}</tbody></table>`;
+  } catch (e) { $("adminUsers").textContent = "No se ha podido cargar la lista: " + (e.message || ""); }
+  const [{ data: sess }, { data: profs }] = await Promise.all([
+    sb.from("sessions").select("id, user_id, case_id, level, provider, role_label, started_at, duration_s, total, exited, hints, scores, feedback").order("started_at", { ascending: false }).limit(500),
+    sb.from("profiles").select("id, pseudonym")
+  ]);
+  const ps = new Map((profs || []).map(p => [p.id, p.pseudonym]));
+  state.adminRows = (sess || []).map(s => ({ ...s, pseudonym: ps.get(s.user_id) || "—" }));
+  const done = state.adminRows.filter(s => s.total != null);
+  const avg = done.length ? Math.round(done.reduce((a, s) => a + s.total, 0) / done.length) : null;
+  $("adminStats").innerHTML = `
+    <div class="stat"><b>${new Set(state.adminRows.map(s => s.user_id)).size}</b><span>participantes con sesiones</span></div>
+    <div class="stat"><b>${state.adminRows.length}</b><span>sesiones</span></div>
+    <div class="stat"><b>${done.length}</b><span>con informe</span></div>
+    <div class="stat"><b>${avg ?? "—"}</b><span>nota media</span></div>`;
+  $("adminSessions").innerHTML = state.adminRows.length ? `<table class="dtable"><thead><tr><th>Fecha</th><th>Seudónimo</th><th>Estamento</th><th>Caso</th><th>Nivel</th><th>Modelo</th><th>Nota</th><th>Utilidad</th><th>Realismo</th></tr></thead><tbody>${state.adminRows.map(s => `
+    <tr><td>${fmtDate(s.started_at)}</td><td><b>${esc(s.pseudonym)}</b></td><td>${esc(s.role_label || "—")}</td><td>${esc(caseTitle(s.case_id))}</td><td>${s.level}</td><td>${s.provider === "openai" ? "GPT" : "Claude"}</td>
+    <td>${s.total != null ? s.total : s.exited ? "Sin evaluar" : "—"}</td><td>${s.feedback?.util ?? "—"}</td><td>${s.feedback?.real ?? "—"}</td></tr>`).join("")}</tbody></table>` : `<span class="muted">Aún no hay sesiones.</span>`;
+}
+$("inviteForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const email = $("inviteEmail").value.trim();
+  $("inviteBtn").disabled = true; $("inviteMsg").textContent = "Enviando invitación…";
+  try {
+    await fnJSON("admin", { action: "invite", email, redirectTo: APP_URL });
+    $("inviteMsg").textContent = `Invitación enviada a ${email}. Recibirá un correo con el enlace de acceso.`;
+    $("inviteEmail").value = "";
+    openAdmin();
+  } catch (err) { $("inviteMsg").textContent = "No se ha podido invitar: " + (err.message || ""); }
+  $("inviteBtn").disabled = false;
+});
+$("exportCsv").onclick = () => {
+  const rows = state.adminRows || [];
+  const head = ["fecha", "seudonimo", "estamento", "caso", "nivel", "modelo", "duracion_s", "pistas", "nota", "estructura", "nurse", "global", "penalizacion", "utilidad", "realismo", "comentario", "salida_sin_evaluar"];
+  const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = [head.join(";")].concat(rows.map(s => [s.started_at, s.pseudonym, s.role_label, caseTitle(s.case_id), s.level, s.provider, s.duration_s, s.hints, s.total, s.scores?.b, s.scores?.n, s.scores?.g, s.scores?.pen, s.feedback?.util, s.feedback?.real, s.feedback?.comment, s.exited].map(q).join(";")));
+  const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = `simulador-empatia-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+};
+
+/* ---------- Baja ---------- */
+$("deleteMe").onclick = () => { $("delConfirm").classList.remove("hidden"); $("delCancel").focus(); };
+$("delCancel").onclick = () => $("delConfirm").classList.add("hidden");
+$("delOk").onclick = async () => {
+  $("delOk").disabled = true; $("delMsg").textContent = "Eliminando…";
+  try {
+    await fnJSON("admin", { action: "delete_me" });
+    await sb.auth.signOut();
+    $("delConfirm").classList.add("hidden");
+    showLogin("Tu cuenta y todas tus sesiones se han eliminado.");
+  } catch (e) { $("delMsg").textContent = "No se ha podido eliminar: " + (e.message || ""); }
+  $("delOk").disabled = false;
+};
+
+/* ---------- Navegación ---------- */
+$("navPractice").onclick = () => { if (!$("viewSession").classList.contains("hidden")) { askFinish(); return; } renderSetup(); show("viewSetup"); };
+$("navHistory").onclick = () => { if (!$("viewSession").classList.contains("hidden")) { askFinish(); return; } openHistory(); };
+$("navAdmin").onclick = () => { if (!$("viewSession").classList.contains("hidden")) { askFinish(); return; } openAdmin(); };
+$("navLogout").onclick = async () => { if (!$("viewSession").classList.contains("hidden")) exitSession(); await sb.auth.signOut(); showLogin("Has cerrado la sesión."); };
+
+/* ---------- Arranque ---------- */
+VIEWS_EXTRA.forEach(v => $(v).classList.add("hidden"));
+["viewSetup", "viewSession", "viewReport"].forEach(v => $(v).classList.add("hidden"));
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  const hashErr = new URLSearchParams(location.hash.slice(1)).get("error_description");
+  if (hashErr) history.replaceState(null, "", location.pathname);
+  if (session) { history.replaceState(null, "", location.pathname); enterApp(); }
+  else showLogin(hashErr ? "El enlace ha caducado o ya se usó. Pide uno nuevo." : "");
+  sb.auth.onAuthStateChange((ev, s) => {
+    if (ev === "SIGNED_IN" && s && !state.profile) { history.replaceState(null, "", location.pathname); enterApp(); }
+  });
+})();
+
+</script>
+</body>
+</html>

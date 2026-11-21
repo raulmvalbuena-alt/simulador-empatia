@@ -400,7 +400,7 @@ main { padding-bottom: 24px; max-width: 1240px; }
 .more-opts[open] { display: grid; gap: 12px; }
 .sheet-bg { display: none; }
 @media (max-width: 1000px) {
-  .setup-side { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; max-height: 88vh; overflow-y: auto; overflow-x: hidden; align-content: start; gap: 16px; border-radius: 22px 22px 0 0; border-bottom: none; padding: 16px 18px calc(16px + env(safe-area-inset-bottom)); transform: translateY(105%); visibility: hidden; transition: transform .28s ease, visibility 0s linear .28s; box-shadow: 0 -14px 40px rgba(10, 30, 34, .28); }
+  .setup-side { position: fixed; top: auto; left: 0; right: 0; bottom: 0; z-index: 60; max-height: 88vh; overflow-y: auto; overflow-x: hidden; align-content: start; gap: 16px; border-radius: 22px 22px 0 0; border-bottom: none; padding: 16px 18px calc(16px + env(safe-area-inset-bottom)); transform: translateY(105%); visibility: hidden; transition: transform .28s ease, visibility 0s linear .28s; box-shadow: 0 -14px 40px rgba(10, 30, 34, .28); }
   .setup-side.open { transform: none; visibility: visible; transition: transform .28s ease; }
   .setup-side > .step-h, .setup-side > .fine { display: none; }
   .setup-side .sheet-h { display: flex; }

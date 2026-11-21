@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-canIsXiihUEN3pJPjltr/dF40hoVwmNnY2pzaLYRQCU=' 'sha256-1t64OfoAOrNCy6EgqBaxX4wteuTd1xnFoJUOupP7ldE='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-dVrq3xdve6SNOlJbaJjG4UUjLYXMObx5RVLRvR1wieE=' 'sha256-1t64OfoAOrNCy6EgqBaxX4wteuTd1xnFoJUOupP7ldE='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de empatía · Urgencias</title>
@@ -1162,6 +1162,118 @@ CASES.push(
   }
 );
 
+/* ---------- Casos nuevos: fallecimiento, dolor torácico y dos eventos adversos (pendientes de validar por Calidad y Docencia) ---------- */
+CASES.push(
+  {
+    id: "pcr",
+    title: "Lleváis mucho rato ahí dentro",
+    family: "Dar malas noticias",
+    type: "spikes",
+    name: "Pilar",
+    gender: "f",
+    age: 68,
+    descr: "Pilar, 68 años. Su marido Andrés (72) llegó en parada cardiaca hace una hora. No se ha recuperado. Ella espera en la sala de familiares sin saberlo.",
+    persona: "Pilar Gómez, 68 años, casada con Andrés desde hace 45 años. Estás sola en la sala de familiares de Urgencias.",
+    situacion: "Andrés se desplomó en el jardín de casa. Llamaste al 112 y la ambulancia se lo llevó haciendo maniobras de reanimación. Llevas casi una hora esperando sin noticias. Intentas convencerte de que se va a poner bien.",
+    sabe: "Que Andrés se cayó en el jardín, que no respondía y que los de la ambulancia le hacían masaje en el corazón.",
+    noSabe: "Que Andrés ha fallecido.",
+    clinica: "Parada cardiaca extrahospitalaria. Reanimación avanzada durante 40 minutos (ambulancia y Urgencias) sin recuperar el pulso. Fallecimiento a las 14:32. Lo más probable es que perdiera la consciencia en segundos y no sufriera. El profesional puede ofrecer verle y despedirse, explicar que se hizo todo lo posible, llamar a algún familiar, ofrecer apoyo de trabajo social o psicología y explicar los siguientes pasos sin prisa.",
+    oculta: "Tardaste unos diez minutos en llamar al 112 porque pensaste que era un mareo. Temes que haya muerto por tu culpa. Tus dos hijos viven fuera de España.",
+    emocion: "miedo y negación",
+    inicio: 7,
+    dilema: "preguntas si fue culpa tuya por no llamar antes y pides que lo sigan intentando un poco más",
+    cierre: "entiendes que Andrés ha fallecido, sabes que puedes verle y que no tuviste la culpa, y sabes quién te va a acompañar ahora",
+    tags: ["Médicos residentes", "Médicos adjuntos"],
+    look: { skin: "#E9C2A6", light: "#F7DCC7", shade: "#BB8F72", blush: "#D98777", hair: "#CFCAC4", hairLight: "#ECE9E5", hairDark: "#A39D97", browC: "#9A928B", iris: "#4F5F6E", irisLight: "#8597A8", shirt: "#4E5F7A", shirtDark: "#38465C", lip: "#BE7C74", lipDark: "#9C5E57", bg: "#DDE1E8", style: "bob", glasses: false, brow: "worry", age: 68 },
+    opening: {
+      es: "¿Viene usted por Andrés? Lleváis mucho rato ahí dentro… Se va a poner bien, ¿verdad? Dígame que se va a poner bien.",
+      ca: "Ve per l'Andrés? Fa molta estona que sou allà dins… Es posarà bé, oi? Digui'm que es posarà bé.",
+      en: "Are you here about Andrés? You've been in there for so long… He's going to be all right, isn't he? Tell me he's going to be all right."
+    }
+  },
+  {
+    id: "torax",
+    title: "Mi padre murió así",
+    family: "Ansiedad y miedo",
+    type: "estructura",
+    name: "Sergio",
+    gender: "m",
+    age: 45,
+    descr: "Sergio, 45 años, con dolor en el pecho desde hace dos horas. El electro y la primera analítica son normales, pero está convencido de que le está dando un infarto.",
+    persona: "Sergio Navarro, 45 años, comercial. Estás en una camilla de Urgencias, monitorizado, con dolor en el pecho.",
+    situacion: "Empezaste con un dolor en el pecho en una reunión de trabajo hace dos horas. Te han hecho un electrocardiograma y un análisis de sangre y te han dicho que hay que repetir el análisis. Nadie te ha explicado por qué. Te cuesta respirar y notas el corazón muy rápido.",
+    sabe: "Que te han hecho un electro y un análisis y que tienes que esperar otro análisis.",
+    noSabe: "Que el electro y el primer análisis son normales y por qué hay que esperar al segundo.",
+    clinica: "Electrocardiograma sin alteraciones agudas. Primera troponina normal; la segunda se repite a las 3 horas, como marca el protocolo. Constantes normales. Dolor punzante que cambia con la respiración y la postura: probablemente no es cardiaco (ansiedad o dolor muscular), pero hay que completar el estudio antes de descartarlo. El profesional puede explicar el protocolo y los tiempos, que está monitorizado, qué hacer si el dolor cambia, y enseñarle a respirar más despacio.",
+    oculta: "Tu padre murió de un infarto a los 50 años, delante de ti. Tienes dos hijos pequeños y llevas meses con mucho estrés en el trabajo.",
+    emocion: "miedo",
+    inicio: 8,
+    dilema: "exiges que te hagan un cateterismo ya y dices que si no te vas a otro hospital",
+    cierre: "entiendes qué te han hecho, por qué hay que esperar al segundo análisis y qué hacer si el dolor cambia, y te sientes acompañado",
+    tags: ["Médicos", "Enfermería / TCAE"],
+    look: { skin: "#E0AE8A", light: "#F0C9AA", shade: "#B17C5C", blush: "#D06D5E", hair: "#2E2A27", hairLight: "#55504B", hairDark: "#181513", browC: "#26201D", iris: "#3F5A45", irisLight: "#6E8C73", shirt: "#7A8794", shirtDark: "#5A6672", lip: "#B57767", lipDark: "#935646", bg: "#DCE3E0", style: "short", glasses: false, brow: "worry", age: 45 },
+    opening: {
+      es: "Me está dando un infarto, ¿verdad? Mi padre murió así… Llevo dos horas aquí tumbado y nadie me dice nada. ¿Por qué no hacen algo?",
+      ca: "M'està donant un infart, oi? El meu pare es va morir així… Fa dues hores que soc aquí estirat i ningú em diu res. Per què no feu alguna cosa?",
+      en: "I'm having a heart attack, aren't I? My father died like this… I've been lying here for two hours and nobody tells me anything. Why isn't anyone doing something?"
+    }
+  },
+  {
+    id: "antibiotico",
+    title: "Tres horas sin antibiótico",
+    family: "Errores y eventos adversos",
+    type: "estructura",
+    name: "Elena",
+    gender: "f",
+    age: 39,
+    descr: "Elena, 39 años, hija de Francisco (76), ingresado en Urgencias por una infección grave. Acaba de descubrir que el antibiótico urgente se le puso con tres horas de retraso.",
+    persona: "Elena Ruiz, 39 años, auxiliar de enfermería en una residencia. Estás junto a la camilla de tu padre, Francisco, de 76 años.",
+    situacion: "Tu padre llegó con fiebre alta y confusión. A las diez y cuarto el médico os dijo que tenía una infección de orina grave y que le ponían un antibiótico urgente. Hace un momento has visto que se lo estaban colgando ahora, a la una y veinte, y una enfermera ha dicho que la orden no se había tramitado.",
+    sabe: "Que el antibiótico era urgente y que se ha puesto unas tres horas tarde. Por tu trabajo sabes que en una infección grave cada hora cuenta.",
+    noSabe: "Por qué ha pasado ni cómo está ahora tu padre.",
+    clinica: "Sepsis de origen urinario. El antibiótico se prescribió a las 10:15; la orden no se tramitó por un fallo en el cambio de turno y se administró a las 13:20, al detectarlo. Ahora la tensión se mantiene y el lactato está bajando; sigue en vigilancia estrecha. Ya se ha notificado como incidente de seguridad. Lo que corresponde: reconocer el error con claridad, pedir disculpas, explicar lo que se sabe sin culpar a compañeros ni especular, decir cómo está ahora, qué se está haciendo y a quién puede dirigirse (por ejemplo, la unidad de atención al paciente).",
+    oculta: "Tu madre murió en un hospital tras una complicación que nadie os explicó. Te prometiste que no volvería a pasar con tu padre.",
+    emocion: "indignación",
+    inicio: 8,
+    dilema: "pides el nombre de la persona que se equivocó y dices que vas a denunciar al hospital",
+    cierre: "sabes qué ha fallado, cómo está tu padre y qué se está haciendo, has recibido una disculpa sincera y sabes a quién acudir",
+    tags: ["Médicos", "Enfermería / TCAE"],
+    look: { skin: "#DDA683", light: "#EEC3A4", shade: "#AE7656", blush: "#D07362", hair: "#5A3B2A", hairLight: "#86604A", hairDark: "#2F1E15", browC: "#3A271D", iris: "#5A4030", irisLight: "#8A6A52", shirt: "#3E6E6B", shirtDark: "#2C5250", lip: "#BD7466", lipDark: "#99554A", bg: "#E4DDD4", style: "bob", glasses: false, brow: "anger", age: 39 },
+    opening: {
+      es: "¿Cómo que se lo acaban de poner? A las diez nos dijeron que el antibiótico era urgente. Son la una y media. ¿Me puede explicar qué ha pasado aquí?",
+      ca: "Com que l'hi acaben de posar? A les deu ens van dir que l'antibiòtic era urgent. És la una i mitja. Em pot explicar què ha passat aquí?",
+      en: "What do you mean they've only just started it? At ten they told us the antibiotic was urgent. It's half past one. Can you explain to me what happened here?"
+    }
+  },
+  {
+    id: "identificacion",
+    title: "Esta pulsera no es suya",
+    family: "Errores y eventos adversos",
+    type: "estructura",
+    name: "Daniel",
+    gender: "m",
+    age: 26,
+    descr: "Daniel, 26 años, nieto de Dolores (84). Ha visto que la pulsera de su abuela lleva el nombre de otra paciente y que ya le han sacado sangre.",
+    persona: "Daniel Marín, 26 años, nieto de Dolores, de 84 años. Estás en el box de Urgencias con tu abuela.",
+    situacion: "Trajiste a tu abuela por un mareo. Le pusieron una pulsera al llegar y le han sacado sangre. Acabas de leer la pulsera: pone «Dolores Martín», con otra fecha de nacimiento. Tu abuela es Dolores Marín.",
+    sabe: "Que la pulsera tiene el nombre y la fecha de otra persona y que ya le han hecho un análisis.",
+    noSabe: "Si le han dado alguna medicación de otra persona ni qué va a pasar con el análisis.",
+    clinica: "Hay dos pacientes con nombres casi iguales. Se puso la pulsera equivocada al registrarla. Se ha detectado antes de administrar ningún fármaco. El análisis extraído se anula y se repite; se pone una pulsera nueva comprobando nombre completo y fecha de nacimiento, se revisan todas las peticiones y la medicación, y se notifica como incidente de seguridad. Admisión puede rehacer la pulsera y los datos y avisar a enfermería; Enfermería puede repetir la extracción y verificar todo con doble identificador.",
+    oculta: "Tu abuela toma Sintrom y tiene demencia leve; no sabría decir si algo está mal. Eres su único cuidador desde que murió tu madre, y te da pánico que le den la medicación de otra persona.",
+    emocion: "desconfianza",
+    inicio: 7,
+    dilema: "dices que nadie va a tocar a tu abuela hasta que venga un responsable y que vas a grabarlo todo con el móvil",
+    cierre: "sabes qué ha fallado, que no se le ha dado nada equivocado, qué se va a repetir y cómo se va a comprobar a partir de ahora",
+    tags: ["Enfermería / TCAE", "Admisión / atención al paciente"],
+    look: { skin: "#C98F68", light: "#DDAA85", shade: "#9A6243", blush: "#BE6450", hair: "#1E1A18", hairLight: "#45403C", hairDark: "#0F0C0B", browC: "#1C1614", iris: "#3B2A1F", irisLight: "#6A4E3A", shirt: "#8A4F3D", shirtDark: "#6A3A2C", lip: "#A86C5A", lipDark: "#884E3E", bg: "#E5DCD2", style: "short", glasses: false, brow: "anger", age: 26 },
+    opening: {
+      es: "Perdone, esta pulsera no es de mi abuela. Pone «Dolores Martín» y ella es Dolores Marín, y la fecha tampoco es la suya. ¿Le han hecho las pruebas a otra persona?",
+      ca: "Perdoni, aquesta polsera no és de la meva àvia. Posa «Dolores Martín» i ella és Dolores Marín, i la data tampoc és la seva. Li han fet les proves a una altra persona?",
+      en: "Excuse me, this wristband isn't my grandmother's. It says \"Dolores Martín\" and she's Dolores Marín, and the date of birth is wrong too. Did you run the tests on someone else?"
+    }
+  }
+);
+
 /* ---------- Voz: voces de España del equipo, según el sexo del personaje ---------- */
 CASES[0].gender = "m"; CASES[1].gender = "f";
 const LOCALE = { es: "es-ES", ca: "ca-ES", en: "en-GB" };
@@ -1362,7 +1474,7 @@ function seg(id, items, current, onPick) {
   $(id).innerHTML = items.map(([v, label]) => `<button type="button" data-v="${v}" aria-pressed="${String(v) === String(current)}">${esc(label)}</button>`).join("");
   $(id).querySelectorAll("button").forEach(b => b.onclick = () => onPick(b.dataset.v));
 }
-const CASE_ROLES = { box: ["med", "enf", "adm"], masa: ["med"], via: ["enf"], admision: ["adm"] };
+const CASE_ROLES = { box: ["med", "enf", "adm"], masa: ["med"], via: ["enf"], admision: ["adm"], pcr: ["med"], torax: ["med", "enf"], antibiotico: ["med", "enf"], identificacion: ["enf", "adm"] };
 const ROLE_SHORT = [["Médico residente", "Residente"], ["Médico adjunto", "Adjunto"], ["Enfermería / TCAE", "Enfermería"], ["Admisión / atención al paciente", "Admisión"]];
 const ROLE_WORD = { med: "médicos", enf: "Enfermería", adm: "Admisión" };
 function fitFor(c) {

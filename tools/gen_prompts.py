@@ -4,6 +4,7 @@ def between(a,b):
     i=s.index(a); j=s.index(b,i); return s[i:j].rstrip()+"\n"
 parts=[
  between('const LANGS = {','const state = {'),
+ between('CASES[0].age = 52','const LOCALE'),
  between('const CARE_ITEMS =','function show(view)'),
  re.search(r'const ROLE_SHORT = .*\n',s).group(0),
  between('function transcriptText(turns)','function speakAsync('),
@@ -37,4 +38,5 @@ export function buildPrompt(step: string, ctx: any): string {
   throw new Error("Paso no válido");
 }
 '''
+out='\n'.join(l for l in out.split('\n') if not l.strip().startswith(('look:','tags:')) and '.look = ' not in l)
 open(sys.argv[1],'w').write(out)

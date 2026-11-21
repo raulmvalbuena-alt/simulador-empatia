@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-yfr+pDOyNO3MC21/jDKT/XT7Q3puyWo2umulXJeiOyM=' 'sha256-nZBcG7+384TX4X8jQ3PtYH7BUuJ3wTZxFHRikbh1qxw='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-CSgs40JhcoVR9erqgSRDAeT7SZ3T8S8XXeX/PnSNHog=' 'sha256-RSd7e50VmBON5/tIBvG+fVJJ5ytbYP0Mr8KJc5WE2aI='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de empatía · Urgencias</title>
@@ -295,6 +295,13 @@ details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .step-h { display: flex; align-items: center; gap: 12px; }
 .step-h h2 { font-size: 22px; }
 .step-n { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 16px; flex: none; }
+.prof-block { display: grid; gap: 14px; padding-bottom: 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.prof-block .seg button { min-height: 44px; font-size: 14px; }
+.prof-block select { min-height: 44px; }
+.pw-fields { display: grid; gap: 12px; }
+.role-fixed { flex: 1 1 320px; display: flex; flex-direction: column; justify-content: center; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; }
+.role-fixed b { font-size: 15.5px; }
+.role-fixed span { font-size: 12.5px; color: var(--muted); }
 .who-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: stretch; }
 .role-seg { flex: 1 1 520px; }
 .role-seg button { min-height: 52px; font-size: 15.5px; }
@@ -515,6 +522,8 @@ main { padding-bottom: 24px; max-width: 1240px; }
 #mPrices { overflow-x: auto; }
 .pp { border: 1px solid var(--line); border-radius: 14px; background: var(--surface, transparent); }
 .pp + .pp { margin-top: 10px; }
+.pp-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 4px 2px 8px; }
+.pp-edit select { min-height: 38px; max-width: 100%; }
 .pp > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; align-items: center; padding: 12px 14px; }
 .pp > summary::-webkit-details-marker { display: none; }
 .pp > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 14px; }
@@ -632,6 +641,15 @@ main { padding-bottom: 24px; max-width: 1240px; }
       <p id="pwLead">La usarás para entrar en el simulador desde cualquier dispositivo.</p>
       <form id="pwForm" class="auth" style="margin:0; gap:12px" novalidate>
         <input type="email" id="pwUser" autocomplete="username" class="hidden" tabindex="-1" aria-hidden="true">
+        <div id="profBlock" class="prof-block hidden">
+          <div class="group"><span class="group-label" id="lblRegRole">Tu estamento</span><div class="seg" id="regRoleSeg" role="group" aria-labelledby="lblRegRole"></div></div>
+          <div class="group hidden" id="regYearGroup"><span class="group-label" id="lblRegYear">Año de residencia</span><div class="seg" id="regYearSeg" role="group" aria-labelledby="lblRegYear"></div></div>
+          <label for="regSpec" class="hidden" id="regSpecGroup">Especialidad
+            <select id="regSpec"><option value="">Elige tu especialidad</option></select>
+          </label>
+          <p class="muted" style="margin:0">Decide qué casos ves y con qué escala te evaluamos. Lo eliges una sola vez: si te equivocas, pide el cambio a Docencia.</p>
+        </div>
+        <div id="pwFields" class="pw-fields">
         <label for="pw1">Contraseña nueva
           <input type="password" id="pw1" autocomplete="new-password" minlength="8" required>
         </label>
@@ -639,6 +657,7 @@ main { padding-bottom: 24px; max-width: 1240px; }
           <input type="password" id="pw2" autocomplete="new-password" minlength="8" required>
         </label>
         <p class="muted" style="margin:0">Al menos 8 caracteres. Mejor si mezcla letras y números.</p>
+        </div>
         <button class="btn big" id="pwBtn" type="submit">Guardar contraseña</button>
         <button class="btn ghost hidden" id="pwCancel" type="button">Cancelar</button>
         <div class="form-msg" id="pwMsg" role="alert"></div>
@@ -751,6 +770,7 @@ main { padding-bottom: 24px; max-width: 1240px; }
         <div class="step-h"><span class="step-n" aria-hidden="true">1</span><h2>¿Quién eres?</h2></div>
         <div class="who-row">
           <div class="seg role-seg" id="roleSeg" role="group" aria-label="Estamento"></div>
+          <div class="role-fixed hidden" id="roleFixed"></div>
           <div class="alias-f">
             <span class="group-label" style="margin:0">Tu seudónimo</span>
             <span class="alias-show" id="aliasShow">—</span>
@@ -1635,7 +1655,7 @@ function closeSheet() { $("setupSide").classList.remove("open"); $("sheetBg").cl
 try { const l = localStorage.getItem("empatia-idioma"); if (l && LANGS[l]) state.lang = l; } catch (e) {}
 function renderSetup() {
   seg("roleSeg", ROLE_SHORT, $("role").value, pickRole);
-  const ordered = CASES.filter(c => fitFor(c).ok).concat(CASES.filter(c => !fitFor(c).ok));
+  const ordered = state.roleLocked ? CASES.filter(c => fitFor(c).ok) : CASES.filter(c => fitFor(c).ok).concat(CASES.filter(c => !fitFor(c).ok));
   const P = progress();
   if (state.level === 3 && level3Locked(state.caseId, P)) state.level = 2;
   $("cases").innerHTML = ordered.map(c => { const f = fitFor(c); return `
@@ -2492,7 +2512,7 @@ $("loginAgain").onclick = () => { $("loginForm").classList.remove("hidden"); $("
 async function loadProfile() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return null;
-  const { data, error } = await sb.from("profiles").select("id, pseudonym, role_label, is_admin, consent_at, has_password").eq("id", user.id).single();
+  const { data, error } = await sb.from("profiles").select("id, pseudonym, role_label, is_admin, consent_at, has_password, res_year, specialty, role_set_at").eq("id", user.id).single();
   if (error) return null;
   return data;
 }
@@ -2508,6 +2528,8 @@ async function enterApp() {
   if (p.role_label && ROLE_SHORT.some(r => r[0] === p.role_label)) { $("role").value = p.role_label; state.role = p.role_label; }
   if (!p.consent_at) { show("viewConsent"); return; }
   if (state.recovery || !p.has_password) { openPassword(state.recovery ? "reset" : "create"); return; }
+  if (needsRole()) { openPassword("role"); return; }
+  state.roleLocked = !p.is_admin && !!p.role_set_at;
   await Promise.all([loadHistoryDB(), loadSettings()]);
   renderSetup();
   show("viewSetup");
@@ -2521,18 +2543,63 @@ async function loadSettings() {
   } catch (e) { state.defaultProvider = "anthropic"; }
   state.provider = state.defaultProvider;
 }
+const SPECIALTIES = ["Medicina Familiar y Comunitaria", "Medicina de Urgencias y Emergencias", "Medicina Interna", "Pediatría", "Anestesiología y Reanimación", "Medicina Intensiva", "Cardiología", "Neumología", "Neurología", "Oncología Médica", "Geriatría", "Psiquiatría", "Cirugía General", "Cirugía Ortopédica y Traumatología", "Obstetricia y Ginecología", "Otra"];
+const needsRole = () => state.profile && !state.profile.is_admin && !state.profile.role_set_at;
+const roleDetail = p => [p.role_label === "Médico residente" && p.res_year ? "R" + p.res_year : "", p.specialty || ""].filter(Boolean).join(" · ");
+function drawProfBlock() {
+  const r = state.reg || {};
+  seg("regRoleSeg", ROLE_SHORT, r.role || "", v => { state.reg = { ...state.reg, role: v }; drawProfBlock(); });
+  seg("regYearSeg", [1, 2, 3, 4, 5].map(n => [n, "R" + n]), r.year || "", v => { state.reg = { ...state.reg, year: Number(v) }; drawProfBlock(); });
+  const med = /^Médico/.test(r.role || "");
+  $("regYearGroup").classList.toggle("hidden", r.role !== "Médico residente");
+  $("regSpecGroup").classList.toggle("hidden", !med);
+  if ($("regSpec").options.length < 2) $("regSpec").insertAdjacentHTML("beforeend", SPECIALTIES.map(x => `<option>${esc(x)}</option>`).join(""));
+}
+$("regSpec").onchange = e => { state.reg = { ...state.reg, spec: e.target.value }; };
 function openPassword(mode) {
   state.pwMode = mode;
-  $("pwTitle").textContent = mode === "change" ? "Cambiar contraseña" : mode === "reset" ? "Crea una contraseña nueva" : "Crea tu contraseña";
-  $("pwLead").textContent = mode === "create" ? "La usarás para entrar en el simulador desde cualquier dispositivo, también desde el móvil." : "Escribe la nueva contraseña dos veces.";
+  const withRole = (mode === "create" || mode === "role") && needsRole();
+  if (withRole && !state.reg) state.reg = {};
+  $("profBlock").classList.toggle("hidden", !withRole);
+  $("pwFields").classList.toggle("hidden", mode === "role");
+  if (withRole) drawProfBlock();
+  $("pwTitle").textContent = mode === "role" ? "Tu perfil" : mode === "change" ? "Cambiar contraseña" : mode === "reset" ? "Crea una contraseña nueva" : "Crea tu perfil y tu contraseña";
+  $("pwLead").textContent = mode === "role" ? "Antes de practicar, dinos cuál es tu estamento." : mode === "create" ? "La contraseña la usarás para entrar desde cualquier dispositivo, también desde el móvil." : "Escribe la nueva contraseña dos veces.";
+  $("pwBtn").textContent = mode === "role" ? "Guardar y continuar" : "Guardar";
   $("pwCancel").classList.toggle("hidden", mode !== "change");
   $("pw1").value = ""; $("pw2").value = ""; $("pwMsg").textContent = "";
   sb.auth.getUser().then(({ data }) => { $("pwUser").value = data.user ? data.user.email : ""; });
   show("viewPassword");
-  $("pw1").focus();
+  (mode === "role" ? $("regRoleSeg").querySelector("button") : $("pw1")).focus();
+}
+function profileError() {
+  const r = state.reg || {};
+  if (!r.role) return "Elige tu estamento.";
+  if (r.role === "Médico residente" && !r.year) return "Elige tu año de residencia.";
+  if (/^Médico/.test(r.role) && !$("regSpec").value) return "Elige tu especialidad.";
+  return "";
+}
+async function saveProfileRole() {
+  const r = state.reg || {};
+  const row = { role_label: r.role, res_year: r.role === "Médico residente" ? r.year : null, specialty: /^Médico/.test(r.role) ? $("regSpec").value : null, role_set_at: new Date().toISOString() };
+  const { error } = await sb.from("profiles").update(row).eq("id", state.profile.id);
+  if (error) return error.message;
+  Object.assign(state.profile, row); state.roleLocked = true; state.reg = null;
+  $("role").value = row.role_label; state.role = row.role_label;
+  return "";
 }
 $("pwForm").addEventListener("submit", async e => {
   e.preventDefault();
+  const withRole = !$("profBlock").classList.contains("hidden");
+  if (withRole) { const m = profileError(); if (m) { $("pwMsg").textContent = m; return; } }
+  if (state.pwMode === "role") {
+    $("pwBtn").disabled = true; $("pwMsg").textContent = "";
+    const err = await saveProfileRole();
+    $("pwBtn").disabled = false;
+    if (err) { $("pwMsg").textContent = "No se ha podido guardar: " + err; return; }
+    await Promise.all([loadHistoryDB(), loadSettings()]); renderSetup(); show("viewSetup");
+    return;
+  }
   const a = $("pw1").value, b = $("pw2").value;
   if (a.length < 8) { $("pwMsg").textContent = "La contraseña debe tener al menos 8 caracteres."; return; }
   if (a !== b) { $("pwMsg").textContent = "Las dos contraseñas no coinciden."; return; }
@@ -2542,6 +2609,7 @@ $("pwForm").addEventListener("submit", async e => {
   if (error) { $("pwMsg").textContent = /should be different|same/i.test(error.message) ? "La contraseña nueva debe ser distinta de la anterior." : /weak|characters/i.test(error.message) ? "Contraseña demasiado débil. Usa una más larga o con números." : "No se ha podido guardar: " + error.message; return; }
   await sb.from("profiles").update({ has_password: true }).eq("id", state.profile.id);
   state.profile.has_password = true; state.recovery = false;
+  if (withRole) { const err = await saveProfileRole(); if (err) { $("pwMsg").textContent = "Contraseña guardada, pero no tu estamento: " + err; openPassword("role"); return; } }
   $("pw1").value = ""; $("pw2").value = "";
   await loadHistoryDB(); renderSetup(); show("viewSetup");
   showHint("Contraseña guardada. A partir de ahora puedes entrar con tu email y tu contraseña.");
@@ -2557,6 +2625,7 @@ $("consentBtn").onclick = async () => {
   if (error) { $("consentMsg").textContent = "No se ha podido guardar: " + error.message; $("consentBtn").disabled = false; return; }
   state.profile.consent_at = new Date().toISOString();
   if (!state.profile.has_password) { openPassword("create"); return; }
+  if (needsRole()) { openPassword("role"); return; }
   await loadHistoryDB();
   renderSetup();
   show("viewSetup");
@@ -2567,14 +2636,25 @@ $("consentNo").onclick = async () => { await sb.auth.signOut(); showLogin("Has s
 const _pickRole = window.pickRole;
 window.pickRole = function (v) {
   _pickRole(v);
-  if (state.profile) sb.from("profiles").update({ role_label: v }).eq("id", state.profile.id).then(() => {});
+  if (state.profile && state.profile.is_admin) sb.from("profiles").update({ role_label: v }).eq("id", state.profile.id).then(() => {});
 };
 
 /* ---------- Modelo de IA ---------- */
 const _renderSetup = window.renderSetup;
 window.renderSetup = function () {
+  if (state.roleLocked && !(CASE_ROLES[state.caseId] || []).includes(roleKind())) {
+    const first = CASES.find(c => (CASE_ROLES[c.id] || []).includes(roleKind()));
+    if (first) state.caseId = first.id;
+  }
   _renderSetup();
   const isAdm = !!(state.profile && state.profile.is_admin);
+  $("roleSeg").classList.toggle("hidden", !!state.roleLocked);
+  $("roleFixed").classList.toggle("hidden", !state.roleLocked);
+  if (state.roleLocked) {
+    const short = (ROLE_SHORT.find(r => r[0] === state.profile.role_label) || [, state.profile.role_label])[1];
+    const det = roleDetail(state.profile);
+    $("roleFixed").innerHTML = `<b>${esc(short)}${det ? " · " + esc(det) : ""}</b><span>Ves los casos de tu estamento. Para cambiarlo, pídelo a Docencia.</span>`;
+  }
   $("providerGroup").classList.toggle("hidden", !isAdm);
   if (!isAdm) state.provider = state.defaultProvider || "anthropic";
   seg("providerSeg", [["anthropic", "Claude"], ["openai", "GPT"]], state.provider, v => { state.provider = v; renderSetup(); });
@@ -2686,11 +2766,12 @@ async function openAdmin() {
   try { ({ users } = await fnJSON("admin", { action: "list" })); } catch (e) { users = null; }
   const [{ data: sess }, { data: profs }] = await Promise.all([
     sb.from("sessions").select("id, user_id, case_id, level, provider, role_label, started_at, duration_s, total, exited, hints, scores, feedback, oculta:report->oculta_descubierta").order("started_at", { ascending: false }).limit(500),
-    sb.from("profiles").select("id, pseudonym, role_label, is_admin")
+    sb.from("profiles").select("id, pseudonym, role_label, is_admin, res_year, specialty, role_set_at")
   ]);
   loadMetrics();
   const ps = new Map((profs || []).map(p => [p.id, p.pseudonym]));
-  state.adminRows = (sess || []).map(s => ({ ...s, pseudonym: ps.get(s.user_id) || "—" }));
+  const pf = new Map((profs || []).map(p => [p.id, p]));
+  state.adminRows = (sess || []).map(s => ({ ...s, pseudonym: ps.get(s.user_id) || "—", res_year: pf.get(s.user_id)?.res_year ?? null, specialty: pf.get(s.user_id)?.specialty ?? null }));
   const done = state.adminRows.filter(s => s.total != null);
   const avg = done.length ? Math.round(done.reduce((a, s) => a + s.total, 0) / done.length) : null;
   $("adminStats").innerHTML = `
@@ -2707,10 +2788,29 @@ async function openAdmin() {
   }
   drawPeople(users, profs || [], costBy);
 }
+function editRole(p) {
+  const opt = (v, l, cur) => `<option value="${esc(v)}"${String(v) === String(cur ?? "") ? " selected" : ""}>${esc(l)}</option>`;
+  return `<div class="pp-edit" data-id="${esc(p.id)}"><span class="group-label">Estamento</span>
+    <select data-k="role_label" aria-label="Estamento">${opt("", "Sin elegir", p.role_label)}${ROLE_SHORT.map(r => opt(r[0], r[1], p.role_label)).join("")}</select>
+    <select data-k="res_year" aria-label="Año de residencia">${opt("", "Año", p.res_year)}${[1, 2, 3, 4, 5].map(n => opt(n, "R" + n, p.res_year)).join("")}</select>
+    <select data-k="specialty" aria-label="Especialidad">${opt("", "Especialidad", p.specialty)}${SPECIALTIES.map(x => opt(x, x, p.specialty)).join("")}</select>
+    <button type="button" class="btn ghost small pp-save">Guardar</button><span class="muted pp-msg" role="status"></span></div>`;
+}
+$("adminUsers").addEventListener("click", async e => {
+  const b = e.target.closest(".pp-save"); if (!b) return;
+  const box = b.closest(".pp-edit"), get = k => box.querySelector(`[data-k="${k}"]`).value;
+  const role = get("role_label") || null;
+  const row = { role_label: role, res_year: role === "Médico residente" && get("res_year") ? Number(get("res_year")) : null, specialty: role && /^Médico/.test(role) ? (get("specialty") || null) : null, role_set_at: role ? new Date().toISOString() : null };
+  b.disabled = true;
+  const { error } = await sb.from("profiles").update(row).eq("id", box.dataset.id);
+  b.disabled = false;
+  box.querySelector(".pp-msg").textContent = error ? "No se ha podido guardar: " + error.message : "Guardado.";
+});
 function drawPeople(users, profs, costBy) {
   const bySess = new Map();
   state.adminRows.forEach(s => { if (!bySess.has(s.user_id)) bySess.set(s.user_id, []); bySess.get(s.user_id).push(s); });
-  let people = users ? users.map(u => ({ ...u })) : profs.map(p => ({ ...p }));
+  const profById = new Map(profs.map(p => [p.id, p]));
+  let people = users ? users.map(u => ({ ...u, ...(profById.get(u.id) || {}) })) : profs.map(p => ({ ...p }));
   const known = new Set(people.map(p => p.id));
   profs.forEach(p => { if (!known.has(p.id) && bySess.has(p.id)) people.push({ ...p }); });
   people.forEach(p => { p.sess = bySess.get(p.id) || []; p.last = p.sess[0]?.started_at || ""; });
@@ -2738,11 +2838,11 @@ function drawPeople(users, profs, costBy) {
   $("adminUsers").innerHTML = people.map(p => {
     const d = p.sess.filter(s => s.total != null), a = d.length ? Math.round(d.reduce((x, s) => x + s.total, 0) / d.length) : null;
     const cost = p.sess.reduce((x, s) => x + (costBy.get(s.id) || 0), 0);
-    const sub = [p.email, p.role_label].filter(Boolean).map(esc).join(" · ");
+    const sub = [p.email, p.role_label, roleDetail(p)].filter(Boolean).map(esc).join(" · ");
     return `<details class="pp"><summary><div class="pp-id"><div><span class="pp-arrow" aria-hidden="true">›</span><b>${esc(p.pseudonym || "Sin seudónimo")}</b>${p.is_admin ? ` <span class="chip accent">Docencia</span>` : ""}</div>${sub ? `<span class="muted">${sub}</span>` : ""}</div>
       <div class="pp-avg"><b>${a ?? "—"}</b><span>nota media</span></div>
       <div class="pp-k">${status(p)}<span class="chip">${p.sess.length} ${p.sess.length === 1 ? "sesión" : "sesiones"}</span>${p.sess.length ? `<span class="chip">Coste ${fmtEur(cost)}</span>` : ""}<span class="chip">${p.last ? "Última " + fmtDate(p.last) : p.last_sign_in_at ? "Acceso " + fmtDate(p.last_sign_in_at) : "Sin acceso"}</span></div></summary>
-      <div class="pp-list">${p.sess.length ? p.sess.map(sessCard).join("") : `<div class="muted" style="padding:6px 2px">Todavía no ha hecho ninguna sesión.</div>`}</div></details>`;
+      <div class="pp-list">${p.id && !p.is_admin ? editRole(p) : ""}${p.sess.length ? p.sess.map(sessCard).join("") : `<div class="muted" style="padding:6px 2px">Todavía no ha hecho ninguna sesión.</div>`}</div></details>`;
   }).join("");
 }
 /* ---------- Consumo y rendimiento ---------- */
@@ -2845,9 +2945,9 @@ $("inviteForm").addEventListener("submit", async e => {
 });
 $("exportCsv").onclick = () => {
   const rows = state.adminRows || [];
-  const head = ["fecha", "seudonimo", "estamento", "caso", "nivel", "modelo", "duracion_s", "pistas", "nota", "estructura", "nurse", "global", "penalizacion", "utilidad", "realismo", "comentario", "salida_sin_evaluar"];
+  const head = ["fecha", "seudonimo", "estamento", "anio_residencia", "especialidad", "caso", "nivel", "modelo", "duracion_s", "pistas", "nota", "estructura", "nurse", "global", "penalizacion", "utilidad", "realismo", "comentario", "salida_sin_evaluar"];
   const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const lines = [head.join(";")].concat(rows.map(s => [s.started_at, s.pseudonym, s.role_label, caseTitle(s.case_id), s.level, s.provider, s.duration_s, s.hints, s.total, s.scores?.b, s.scores?.n, s.scores?.g, s.scores?.pen, s.feedback?.util, s.feedback?.real, s.feedback?.comment, s.exited].map(q).join(";")));
+  const lines = [head.join(";")].concat(rows.map(s => [s.started_at, s.pseudonym, s.role_label, s.res_year, s.specialty, caseTitle(s.case_id), s.level, s.provider, s.duration_s, s.hints, s.total, s.scores?.b, s.scores?.n, s.scores?.g, s.scores?.pen, s.feedback?.util, s.feedback?.real, s.feedback?.comment, s.exited].map(q).join(";")));
   const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob); a.download = `simulador-empatia-${new Date().toISOString().slice(0, 10)}.csv`;

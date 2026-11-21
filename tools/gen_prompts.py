@@ -7,6 +7,7 @@ parts=[
  between('CASES[0].age = 52','const LOCALE'),
  between('const CARE_ITEMS =','function show(view)'),
  re.search(r'const ROLE_SHORT = .*\n',s).group(0),
+ re.search(r'const CASE_ROLES = .*\n',s).group(0),
  between('function transcriptText(turns)','function speakAsync('),
 ]
 out='''// @ts-nocheck
@@ -18,6 +19,11 @@ const currentCase = () => CASES.find(c => c.id === state.caseId);
 const currentLevel = () => LEVELS.find(l => l.n === state.level);
 '''+"\n".join(parts)+'''
 const ROLES = ROLE_SHORT.map(r => r[0]);
+// ¿Puede este estamento practicar este caso?
+export function roleAllows(role: string, caseId: string): boolean {
+  state = { role };
+  return (CASE_ROLES[caseId] || []).includes(roleKind());
+}
 export function buildPrompt(step: string, ctx: any): string {
   const caseId = CASES.some(c => c.id === ctx?.case_id) ? ctx.case_id : null;
   if (!caseId) throw new Error("Caso no válido");

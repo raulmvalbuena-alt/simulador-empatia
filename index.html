@@ -2,11 +2,19 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-NXSn1v5u0o0jE0n3WWIfnV846VMzT1JypqFcPVa9/tU=' 'sha256-8mkcV+gKF8x8gMuOq0k7Z92IPcciJkJDtoP25l5MrjI='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-NXSn1v5u0o0jE0n3WWIfnV846VMzT1JypqFcPVa9/tU=' 'sha256-ahdLmaj/VwGayEyGeRDdjzdrFITzjnLe5tNjjBgkPv8='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de empatía · Urgencias</title>
 <meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0E6A70">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Empatía Urg">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/favicon-64.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -88,6 +96,14 @@ main { max-width: 1180px; margin: 0 auto; padding: 8px 16px 120px; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip { font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--sunk); color: var(--muted); }
 .chip.accent { background: var(--accent-soft); color: var(--accent); }
+/* App instalable */
+.install-tip { display: flex; align-items: center; gap: 12px; background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 14px; padding: 10px 12px; margin-bottom: 16px; }
+.install-tip.hidden { display: none; }
+.install-tip .it-ic { flex: none; width: 34px; height: 34px; border-radius: 9px; background: var(--accent); display: grid; place-items: center; }
+.install-tip .it-ic svg { width: 18px; height: 18px; }
+.install-tip .it-txt { flex: 1; font-size: 14px; color: var(--ink); }
+.install-tip .it-x { flex: none; border: none; background: none; font-size: 22px; line-height: 1; color: var(--muted); padding: 4px 6px; cursor: pointer; }
+@media (display-mode: standalone) { .install-tip { display: none !important; } }
 /* Gamificación: récord, preocupación oculta, insignias y niveles */
 .chip svg { width: 12px; height: 12px; vertical-align: -1px; margin-right: 3px; }
 .chip.rec { background: color-mix(in srgb, var(--mid) 18%, transparent); color: color-mix(in srgb, var(--mid) 70%, var(--ink)); }
@@ -664,6 +680,12 @@ main { padding-bottom: 24px; max-width: 1240px; }
   <!-- CONFIGURAR -->
   <section id="viewSetup" class="setup hidden">
     <div class="setup-main">
+      <div class="install-tip hidden" id="installTip" role="note">
+        <span class="it-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#FFFDFA" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+        <span class="it-txt" id="installTxt">Instala el simulador en tu móvil para abrirlo como una app.</span>
+        <button type="button" class="btn small" id="installBtn">Instalar</button>
+        <button type="button" class="it-x" id="installX" aria-label="Cerrar aviso">×</button>
+      </div>
       <div class="intro">
         <h1 class="hero">¿A quién vas a atender hoy?</h1>
         <p class="lede">Tres pasos y entras al box: sesiones de 8 a 12 minutos con informe al final.</p>
@@ -2755,6 +2777,24 @@ VIEWS_EXTRA.forEach(v => $(v).classList.add("hidden"));
   });
 })();
 
+
+/* ---------- App instalable ---------- */
+(function () {
+  if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  let dismissed = false;
+  try { dismissed = localStorage.getItem("installDismissed") === "1"; } catch (e) {}
+  if (standalone || dismissed) return;
+  const tip = $("installTip"), btn = $("installBtn");
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  let deferred = null;
+  window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferred = e; btn.classList.remove("hidden"); tip.classList.remove("hidden"); });
+  if (isIOS) { $("installTxt").innerHTML = "Instálalo como app: pulsa <b>Compartir</b> y después <b>Añadir a pantalla de inicio</b>."; btn.classList.add("hidden"); tip.classList.remove("hidden"); }
+  else if (!deferred) btn.classList.add("hidden");
+  btn.onclick = async () => { if (!deferred) return; deferred.prompt(); await deferred.userChoice.catch(() => {}); deferred = null; tip.classList.add("hidden"); };
+  $("installX").onclick = () => { tip.classList.add("hidden"); try { localStorage.setItem("installDismissed", "1"); } catch (e) {} };
+  window.addEventListener("appinstalled", () => tip.classList.add("hidden"));
+})();
 </script>
 </body>
 </html>

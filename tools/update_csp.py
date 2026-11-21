@@ -13,7 +13,8 @@ csp = "; ".join([
     "font-src https://fonts.gstatic.com",
     "img-src 'self' data: blob:",
     "media-src 'self' data: blob:",
-    f"connect-src {SB} {SB.replace('https', 'wss')}",
+    f"connect-src 'self' {SB} {SB.replace('https', 'wss')}",
+    "manifest-src 'self'", "worker-src 'self'",
     "base-uri 'none'", "form-action 'self'", "object-src 'none'",
 ])
 tag = f'<meta http-equiv="Content-Security-Policy" content="{csp}">'

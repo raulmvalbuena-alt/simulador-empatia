@@ -1,4 +1,4 @@
-# Simulador de empatía
+# Simulador de empatía · Urgencias (piloto)
 
 Web para entrenar la comunicación y la empatía del personal sanitario con pacientes y familiares simulados por IA.
 Autor: Mauricio Valbuena.
@@ -8,12 +8,12 @@ Autor: Mauricio Valbuena.
 - **Web estática** (`index.html`), publicada con GitHub Pages.
 - **Supabase** (proyecto `simulador-empatia`, región UE · París):
   - Acceso por enlace de un solo uso enviado al email. Solo pueden entrar los emails invitados.
-  - Tablas `profiles` (seudónimo, estamento, consentimiento, rol de administración) y `sessions` (transcripción, informe, puntuaciones, valoración), protegidas con RLS.
+  - Tablas `profiles` (seudónimo, estamento, consentimiento, rol de Docencia) y `sessions` (transcripción, informe, puntuaciones, valoración), protegidas con RLS.
   - Funciones de servidor (Edge Functions), que guardan las claves de API:
     - `llm`: personaje, pistas y evaluación con Claude (Anthropic) o GPT (OpenAI).
     - `tts`: voz del personaje (OpenAI).
     - `stt`: transcripción de lo que dice el profesional (OpenAI). El audio no se guarda.
-    - `admin`: invitar participantes (solo administradores), listar altas y baja propia.
+    - `admin`: invitar participantes (solo Docencia), listar altas y baja propia.
 
 ## Configuración (una vez)
 
@@ -24,7 +24,7 @@ En Supabase → Authentication → URL Configuration: Site URL y Redirect URL = 
 
 En Supabase → Authentication → Sign In / Providers → Email: desactivar "Allow new users to sign up".
 
-Los administradores se marcan a mano en la tabla `profiles` (columna `is_admin`).
+El primer usuario dado de alta queda como administrador (Docencia).
 
 ## Uso de datos
 

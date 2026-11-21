@@ -2,10 +2,10 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-nj6kjn/tHfqmZfIzrbmL/yVUBR1ArZykKuL6HOYLivQ=' 'sha256-3YOM587S4ycb/MVJIEQP+kdg5XrKMomcPe9yTFvBYt4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-yfr+pDOyNO3MC21/jDKT/XT7Q3puyWo2umulXJeiOyM=' 'sha256-nZBcG7+384TX4X8jQ3PtYH7BUuJ3wTZxFHRikbh1qxw='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Simulador de empatía</title>
+<title>Simulador de empatía · Urgencias</title>
 <meta name="robots" content="noindex">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0E6A70">
@@ -20,7 +20,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  /* Dirección: un box clínico tranquilo. Neutros cálidos de piedra, verde azulado clínico como acento,
+  /* Dirección: un box de Urgencias tranquilo. Neutros cálidos de piedra, verde azulado clínico como acento,
      y la emoción del personaje en una escala azul → ámbar → coral (distinguible también por luminosidad).
      Layout: el personaje en el centro del escenario; la transcripción a un lado; el micrófono siempre visible. */
   --bg: #F4F1EC;
@@ -574,7 +574,7 @@ main { padding-bottom: 24px; max-width: 1240px; }
 </head>
 <body>
 <header class="top">
-  <div class="brand" id="brand" role="button" tabindex="0" title="Volver al inicio" style="cursor:pointer"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#FFFDFA" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>Simulador de empatía</div>
+  <div class="brand" id="brand" role="button" tabindex="0" title="Volver al inicio" style="cursor:pointer"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#FFFDFA" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>Simulador de empatía · Urgencias</div>
   <div class="top-right">
     <div class="theme-seg" id="themeSeg" role="group" aria-label="Tema de la pantalla">
       <button type="button" data-t="light" aria-pressed="false" title="Fondo claro"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg><span>Claro</span></button>
@@ -587,7 +587,7 @@ main { padding-bottom: 24px; max-width: 1240px; }
       <nav id="userNav" aria-label="Menú">
         <button type="button" id="navPractice" data-nav="viewSetup">Practicar</button>
         <button type="button" id="navHistory" data-nav="viewHistory">Mis sesiones</button>
-        <button type="button" id="navAdmin" data-nav="viewAdmin" class="hidden">Administración</button>
+        <button type="button" id="navAdmin" data-nav="viewAdmin" class="hidden">Panel de Docencia</button>
         <button type="button" id="navLogout">Salir</button>
       </nav>
     </div>
@@ -618,11 +618,11 @@ main { padding-bottom: 24px; max-width: 1240px; }
       </form>
       <div id="loginSent" class="hidden" style="display:grid; gap:10px">
         <p class="form-msg ok" style="font-weight:700">Revisa tu correo</p>
-        <p>Si <b id="sentTo"></b> tiene invitación, te llegará <span id="sentWhat">un enlace</span>. Ábrelo en este mismo dispositivo. Si no llega en unos minutos, mira en la carpeta de spam.</p>
+        <p>Si <b id="sentTo"></b> está dado de alta en el piloto, te llegará <span id="sentWhat">un enlace</span>. Ábrelo en este mismo dispositivo. Si no llega en unos minutos, mira en la carpeta de spam o pide acceso a Docencia.</p>
         <button class="btn ghost" id="loginAgain" type="button">Volver</button>
       </div>
     </div>
-    <p class="fine" style="text-align:center">Entrenamiento en comunicación y empatía para profesionales sanitarios. Acceso con invitación.</p>
+    <p class="fine" style="text-align:center">Piloto de formación en comunicación clínica. Acceso solo para participantes invitados por Docencia.</p>
   </section>
 
   <!-- CONTRASEÑA -->
@@ -653,19 +653,19 @@ main { padding-bottom: 24px; max-width: 1240px; }
       <h2 style="font-size:18px">Qué es este simulador</h2>
       <ul>
         <li>Hablarás con <b>personajes ficticios generados por inteligencia artificial</b>. No son personas reales.</li>
-        <li>Al terminar cada sesión, una IA evalúa tu comunicación con marcos reconocidos de comunicación clínica (SPIKES, Calgary-Cambridge, AIDET, HEARD, NURSE y CARE).</li>
+        <li>Al terminar cada sesión, una IA evalúa tu comunicación con marcos validados (SPIKES, Calgary-Cambridge, AIDET, HEARD, NURSE y CARE).</li>
         <li>Las puntuaciones son <b>formativas</b>: no se usan para evaluar tu desempeño laboral.</li>
       </ul>
       <h2 style="font-size:18px">Qué datos se guardan</h2>
       <ul>
         <li>Tu email, solo para darte acceso. En los resultados apareces con un seudónimo.</li>
-        <li>La transcripción de tus sesiones, las puntuaciones y tu valoración, para que veas tu evolución y para mejorar el simulador.</li>
+        <li>La transcripción de tus sesiones, las puntuaciones y tu valoración, para que veas tu evolución y para evaluar el piloto.</li>
         <li><b>El audio de tu voz no se guarda</b>: se transcribe y se descarta.</li>
         <li>Los datos se alojan en servidores de la Unión Europea. La IA y la voz las procesan Anthropic y OpenAI.</li>
         <li>Puedes eliminar tu cuenta y todas tus sesiones en cualquier momento desde "Mis sesiones".</li>
         <li>No introduzcas nunca datos de pacientes reales.</li>
       </ul>
-      <label class="check-row"><input type="checkbox" id="consentChk"> He leído esta información y acepto usar el simulador en estas condiciones.</label>
+      <label class="check-row"><input type="checkbox" id="consentChk"> He leído esta información y acepto participar en el piloto.</label>
       <div class="actions-row">
         <button class="btn" id="consentBtn" type="button" disabled>Aceptar y continuar</button>
         <button class="btn ghost" id="consentNo" type="button">Ahora no</button>
@@ -691,7 +691,7 @@ main { padding-bottom: 24px; max-width: 1240px; }
 
   <!-- PANEL DE DOCENCIA -->
   <section id="viewAdmin" class="page hidden">
-    <div class="page-h"><h1>Administración</h1><button class="btn ghost" id="exportCsv" type="button">Exportar sesiones (CSV)</button></div>
+    <div class="page-h"><h1>Panel de Docencia</h1><button class="btn ghost" id="exportCsv" type="button">Exportar sesiones (CSV)</button></div>
     <div class="stats" id="adminStats"></div>
     <div class="card" style="display:grid; gap:10px">
       <h2 style="font-size:17px">Modelo de IA para los participantes</h2>
@@ -797,7 +797,7 @@ main { padding-bottom: 24px; max-width: 1240px; }
           <div class="seg" id="langSeg" role="group" aria-labelledby="lblLang"></div>
         </div>
         <div class="group hidden" id="providerGroup">
-          <span class="group-label" id="lblProv">Modelo de IA <span class="hint-i">· solo administración</span></span>
+          <span class="group-label" id="lblProv">Modelo de IA <span class="hint-i">· solo Docencia</span></span>
           <div class="seg" id="providerSeg" role="group" aria-labelledby="lblProv"></div>
           <div class="help" id="providerHelp"></div>
         </div>
@@ -1269,7 +1269,7 @@ CASES.push(
   }
 );
 
-/* ---------- Casos nuevos: fallecimiento, dolor torácico y dos eventos adversos (pendientes de validación clínica) ---------- */
+/* ---------- Casos nuevos: fallecimiento, dolor torácico y dos eventos adversos (pendientes de validar por Calidad y Docencia) ---------- */
 CASES.push(
   {
     id: "pcr",
@@ -2287,13 +2287,13 @@ function renderReport(r, secs) {
     <div class="grid2">
       <div class="card"><h2>Tu evolución</h2>
         <div class="history">${hist.map((h, i) => `<div class="${i === hist.length - 1 ? "last" : ""}" style="height:${Math.max(4, h.t / maxH * 100)}%" title="Sesión ${i + 1}: ${h.t}"><span>${h.t}</span></div>`).join("")}</div>
-        <span class="muted">Sesiones en este navegador. Con cuenta se guardan con tu seudónimo y ves tu evolución sesión a sesión.</span>
+        <span class="muted">Sesiones en este navegador. En el piloto se guardan con tu seudónimo y Docencia ve la evolución de la 1.ª a la 5.ª.</span>
       </div>
       <div class="card"><h2>¿Qué te ha parecido?</h2>
         <div><span class="muted">Utilidad</span><div class="scale" data-q="util">${[1,2,3,4,5].map(n => `<button type="button" aria-pressed="false" data-v="${n}" aria-label="Utilidad ${n} de 5">${n}</button>`).join("")}</div></div>
         <div><span class="muted">Realismo del personaje</span><div class="scale" data-q="real">${[1,2,3,4,5].map(n => `<button type="button" aria-pressed="false" data-v="${n}" aria-label="Realismo ${n} de 5">${n}</button>`).join("")}</div></div>
         <label class="sr-only" for="fbText">Comentario</label><textarea id="fbText" rows="2" placeholder="¿Qué mejorarías?"></textarea>
-        <span class="muted">En la demo tu valoración solo se muestra aquí; con cuenta se guarda con tu seudónimo.</span>
+        <span class="muted">En la demo tu valoración solo se muestra aquí; en el piloto se guardará con tu seudónimo.</span>
       </div>
     </div>
 
@@ -2498,7 +2498,7 @@ async function loadProfile() {
 }
 async function enterApp() {
   const p = await loadProfile();
-  if (!p) { await sb.auth.signOut(); showLogin("No se ha encontrado tu perfil. Pide una invitación."); return; }
+  if (!p) { await sb.auth.signOut(); showLogin("No se ha encontrado tu perfil. Pide acceso a Docencia."); return; }
   state.profile = p;
   $("userBox").classList.remove("hidden");
   $("userPseudo").textContent = p.pseudonym;
@@ -2578,7 +2578,7 @@ window.renderSetup = function () {
   $("providerGroup").classList.toggle("hidden", !isAdm);
   if (!isAdm) state.provider = state.defaultProvider || "anthropic";
   seg("providerSeg", [["anthropic", "Claude"], ["openai", "GPT"]], state.provider, v => { state.provider = v; renderSetup(); });
-  $("providerHelp").textContent = (state.provider === "openai" ? "GPT (OpenAI) interpreta al personaje, da las pistas y evalúa." : "Claude (Anthropic) interpreta al personaje, da las pistas y evalúa.") + ` Los participantes usan ${state.defaultProvider === "openai" ? "GPT" : "Claude"} (se cambia en Administración).`;
+  $("providerHelp").textContent = (state.provider === "openai" ? "GPT (OpenAI) interpreta al personaje, da las pistas y evalúa." : "Claude (Anthropic) interpreta al personaje, da las pistas y evalúa.") + ` Los participantes usan ${state.defaultProvider === "openai" ? "GPT" : "Claude"} (se cambia en el Panel de Docencia).`;
 };
 
 /* ---------- Guardado de sesiones ---------- */
@@ -2739,7 +2739,7 @@ function drawPeople(users, profs, costBy) {
     const d = p.sess.filter(s => s.total != null), a = d.length ? Math.round(d.reduce((x, s) => x + s.total, 0) / d.length) : null;
     const cost = p.sess.reduce((x, s) => x + (costBy.get(s.id) || 0), 0);
     const sub = [p.email, p.role_label].filter(Boolean).map(esc).join(" · ");
-    return `<details class="pp"><summary><div class="pp-id"><div><span class="pp-arrow" aria-hidden="true">›</span><b>${esc(p.pseudonym || "Sin seudónimo")}</b>${p.is_admin ? ` <span class="chip accent">Admin</span>` : ""}</div>${sub ? `<span class="muted">${sub}</span>` : ""}</div>
+    return `<details class="pp"><summary><div class="pp-id"><div><span class="pp-arrow" aria-hidden="true">›</span><b>${esc(p.pseudonym || "Sin seudónimo")}</b>${p.is_admin ? ` <span class="chip accent">Docencia</span>` : ""}</div>${sub ? `<span class="muted">${sub}</span>` : ""}</div>
       <div class="pp-avg"><b>${a ?? "—"}</b><span>nota media</span></div>
       <div class="pp-k">${status(p)}<span class="chip">${p.sess.length} ${p.sess.length === 1 ? "sesión" : "sesiones"}</span>${p.sess.length ? `<span class="chip">Coste ${fmtEur(cost)}</span>` : ""}<span class="chip">${p.last ? "Última " + fmtDate(p.last) : p.last_sign_in_at ? "Acceso " + fmtDate(p.last_sign_in_at) : "Sin acceso"}</span></div></summary>
       <div class="pp-list">${p.sess.length ? p.sess.map(sessCard).join("") : `<div class="muted" style="padding:6px 2px">Todavía no ha hecho ninguna sesión.</div>`}</div></details>`;

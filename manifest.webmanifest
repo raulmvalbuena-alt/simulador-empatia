@@ -1,7 +1,7 @@
 {
-  "name": "Simulador de empatía",
-  "short_name": "Empatía",
-  "description": "Entrenamiento en comunicación y empatía para profesionales sanitarios.",
+  "name": "Simulador de empatía · Urgencias",
+  "short_name": "Empatía Urg",
+  "description": "Entrenamiento en comunicación y empatía para profesionales de Urgencias.",
   "lang": "es",
   "start_url": "./",
   "scope": "./",

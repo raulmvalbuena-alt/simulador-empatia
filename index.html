@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-Xkfe5+q8rkvogjru3hkkdQ/NOUhDY3BSZFrBsIo7fyM=' 'sha256-0iQsa/W3H9GgkF9o+8gMg+oHmTJhCKrgG0XKIRZf/Ew='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-NXSn1v5u0o0jE0n3WWIfnV846VMzT1JypqFcPVa9/tU=' 'sha256-8mkcV+gKF8x8gMuOq0k7Z92IPcciJkJDtoP25l5MrjI='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de empatía · Urgencias</title>
@@ -93,16 +93,12 @@ main { max-width: 1180px; margin: 0 auto; padding: 8px 16px 120px; }
 .chip.rec { background: color-mix(in srgb, var(--mid) 18%, transparent); color: color-mix(in srgb, var(--mid) 70%, var(--ink)); }
 .chip.found { background: var(--accent); color: var(--surface); }
 .chip.locked { background: transparent; border: 1.5px dashed var(--line); color: var(--muted); padding: 2px 9px; }
-.progress-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; margin-bottom: 14px; }
-.progress-strip .lbl { font-size: 12.5px; font-weight: 700; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
 .badges { display: flex; gap: 8px; flex-wrap: wrap; }
 .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 4px 10px 4px 4px; border-radius: 999px; border: 1.5px dashed var(--line); color: var(--muted); }
 .badge i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--sunk); font-style: normal; }
 .badge i svg { width: 13px; height: 13px; }
 .badge.on { border: 1.5px solid var(--accent); color: var(--accent); background: var(--accent-soft); }
 .badge.on i { background: var(--accent); color: var(--surface); }
-.progress-strip .found-n { font-size: 13.5px; color: var(--ink); }
-.progress-strip .found-n b { font-family: var(--font-display); font-size: 17px; }
 .seg button[data-locked] { opacity: .55; cursor: not-allowed; }
 .seg button[data-locked] svg { width: 12px; height: 12px; vertical-align: -1px; margin-left: 4px; }
 .prog-card { display: grid; gap: 10px; }
@@ -474,7 +470,8 @@ main { padding-bottom: 24px; max-width: 1240px; }
 .page { display: grid; gap: 16px; }
 .page-h { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; }
 .page-h h1 { font-size: 28px; }
-.table-card { overflow-x: auto; padding: 8px; }
+.table-card { overflow-x: auto; padding: 8px; max-width: 100%; }
+#viewHistory, #viewHistory > *, #histList { min-width: 0; max-width: 100%; }
 .dtable { width: 100%; border-collapse: collapse; font-size: 14px; }
 .dtable th, .dtable td { text-align: left; padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
 .dtable th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
@@ -615,6 +612,7 @@ main { padding-bottom: 24px; max-width: 1240px; }
   <!-- MIS SESIONES -->
   <section id="viewHistory" class="page hidden">
     <div class="page-h"><h1>Mis sesiones</h1></div>
+    <div class="card"><h2 style="font-size:17px">Tus insignias</h2><p class="muted" style="margin:4px 0 10px">Consigues una al sacar 70 o más en un caso de cada familia, en nivel Estándar o Exigente.</p><div class="badges" id="histBadges"></div></div>
     <div class="card"><h2 style="font-size:17px">Tu evolución</h2><div class="history" id="histChart" style="margin-top:8px"></div></div>
     <div id="histList"></div>
     <div class="card danger-zone" style="display:grid; gap:10px">
@@ -1541,17 +1539,12 @@ function progress() {
   return { best, found, pass2 };
 }
 const famOf = id => FAMILIES.find(f => f[2].includes(id));
-const level3Locked = (id, P) => !(P || progress()).pass2[id];
-function progressStrip(P) {
+const level3Locked = (id, P) => !(state.profile && state.profile.is_admin) && !(P || progress()).pass2[id];
+function badgesHTML(P) {
   const k = roleKind();
   const mine = CASES.filter(c => (CASE_ROLES[c.id] || []).includes(k));
   const fams = FAMILIES.filter(f => f[2].some(id => mine.some(c => c.id === id)));
-  const nFound = mine.filter(c => P.found[c.id]).length;
-  return `<div class="progress-strip" aria-label="Tu progreso">
-    <span class="lbl">Tu progreso</span>
-    <div class="badges">${fams.map(f => { const on = f[2].some(id => P.pass2[id]); return `<span class="badge ${on ? "on" : ""}" title="${on ? "Insignia conseguida" : `Saca ${UNLOCK_SCORE} o más en un caso de esta familia`}"><i>${on ? ICON.badge : ICON.lock}</i>${esc(f[1])}</span>`; }).join("")}</div>
-    <span class="found-n"><b>${nFound}</b> de ${mine.length} preocupaciones ocultas descubiertas</span>
-  </div>`;
+  return fams.map(f => { const on = f[2].some(id => P.pass2[id]); return `<span class="badge ${on ? "on" : ""}" title="${on ? "Insignia conseguida" : `Saca ${UNLOCK_SCORE} o más en un caso de esta familia`}"><i>${on ? ICON.badge : ICON.lock}</i>${esc(f[1])}</span>`; }).join("");
 }
 function fitFor(c) {
   const k = roleKind(), r = CASE_ROLES[c.id] || ["med", "enf", "adm"];
@@ -1571,8 +1564,6 @@ function renderSetup() {
   seg("roleSeg", ROLE_SHORT, $("role").value, pickRole);
   const ordered = CASES.filter(c => fitFor(c).ok).concat(CASES.filter(c => !fitFor(c).ok));
   const P = progress();
-  if (!$("progressStrip")) $("cases").insertAdjacentHTML("beforebegin", '<div id="progressStrip"></div>');
-  $("progressStrip").innerHTML = progressStrip(P);
   if (state.level === 3 && level3Locked(state.caseId, P)) state.level = 2;
   $("cases").innerHTML = ordered.map(c => { const f = fitFor(c); return `
     <button type="button" class="case ${f.cls}" data-case="${c.id}" aria-pressed="${c.id === state.caseId}"${f.ok ? "" : ` disabled aria-disabled="true" title="Este caso no aplica a tu estamento"`}>
@@ -2563,6 +2554,7 @@ function wireFeedback() {
 /* ---------- Mis sesiones ---------- */
 async function openHistory() {
   show("viewHistory");
+  $("histBadges").innerHTML = badgesHTML(progress());
   $("histList").innerHTML = `<div class="card"><span class="spinner"></span>Cargando tus sesiones…</div>`;
   const { data, error } = await sb.from("sessions").select("id, case_id, level, lang, mode, provider, started_at, duration_s, total, exited, hints").eq("user_id", state.profile.id).order("started_at", { ascending: false }).limit(100);
   if (error) { $("histList").innerHTML = `<div class="card">No se han podido cargar: ${esc(error.message)}</div>`; return; }

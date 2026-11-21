@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-NXSn1v5u0o0jE0n3WWIfnV846VMzT1JypqFcPVa9/tU=' 'sha256-ahdLmaj/VwGayEyGeRDdjzdrFITzjnLe5tNjjBgkPv8='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-yfr+pDOyNO3MC21/jDKT/XT7Q3puyWo2umulXJeiOyM=' 'sha256-m4oYAvZxAXTXFbPWTJRZGyNJxI45lk2BvX6M7DgP+Og='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de empatía · Urgencias</title>
@@ -383,11 +383,34 @@ main { padding-bottom: 24px; max-width: 1240px; }
   .setup { grid-template-columns: 1fr; }
   .setup-side { position: static; }
 }
+/* Ajustes: hoja inferior en móvil y tableta */
+.sheet-h { display: none; align-items: center; gap: 12px; }
+.setup-side > *, .more-opts > * { min-width: 0; }
+.sheet-case { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.sheet-case .avatar-wrap { width: 56px; height: 56px; flex: none; }
+.sheet-case .avatar-wrap .face { inset: 6px; }
+.sheet-case b { display: block; font-family: var(--font-display); font-size: 19px; color: var(--ink); }
+.sheet-case span { display: block; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sheet-x { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); font-size: 22px; line-height: 1; color: var(--muted); cursor: pointer; }
+.more-opts { border-top: 1px solid var(--line); padding-top: 10px; }
+.more-opts summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--muted); list-style: none; display: flex; align-items: center; gap: 6px; }
+.more-opts summary::-webkit-details-marker { display: none; }
+.more-opts summary::before { content: "›"; display: inline-block; font-size: 18px; transition: transform .15s; }
+.more-opts[open] summary::before { transform: rotate(90deg); }
+.more-opts[open] { display: grid; gap: 12px; }
+.sheet-bg { display: none; }
+@media (max-width: 1000px) {
+  .setup-side { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; max-height: 88vh; overflow-y: auto; overflow-x: hidden; align-content: start; gap: 16px; border-radius: 22px 22px 0 0; border-bottom: none; padding: 16px 18px calc(16px + env(safe-area-inset-bottom)); transform: translateY(105%); visibility: hidden; transition: transform .28s ease, visibility 0s linear .28s; box-shadow: 0 -14px 40px rgba(10, 30, 34, .28); }
+  .setup-side.open { transform: none; visibility: visible; transition: transform .28s ease; }
+  .setup-side > .step-h, .setup-side > .fine { display: none; }
+  .setup-side .sheet-h { display: flex; }
+  .sheet-bg.on { display: block; position: fixed; inset: 0; z-index: 55; background: rgba(10, 20, 22, .45); }
+  .side-cta { position: sticky; bottom: calc(-16px - env(safe-area-inset-bottom)); background: var(--surface); padding-bottom: 6px; }
+}
 @media (max-width: 640px) {
   .setup .case-grid { grid-template-columns: 1fr; }
   .setup .case { grid-template-columns: 80px 1fr; }
   .setup .case .avatar-wrap { width: 80px; height: 80px; }
-  .side-cta { position: sticky; bottom: 0; background: var(--surface); padding-bottom: 6px; }
 }
 
 /* compactación para caber en una pantalla */
@@ -645,6 +668,11 @@ main { padding-bottom: 24px; max-width: 1240px; }
     <div class="page-h"><h1>Panel de Docencia</h1><button class="btn ghost" id="exportCsv" type="button">Exportar sesiones (CSV)</button></div>
     <div class="stats" id="adminStats"></div>
     <div class="card" style="display:grid; gap:10px">
+      <h2 style="font-size:17px">Modelo de IA para los participantes</h2>
+      <div class="seg" id="defProvSeg" role="group" aria-label="Modelo de IA para los participantes" style="max-width:360px"></div>
+      <div class="muted" id="defProvMsg" role="status">Los participantes no eligen modelo: usan este. Tú puedes cambiarlo en cada sesión desde «Más opciones».</div>
+    </div>
+    <div class="card" style="display:grid; gap:10px">
       <h2 style="font-size:17px">Dar de alta a un participante</h2>
       <form id="inviteForm" class="invite-row" novalidate>
         <label class="sr-only" for="inviteEmail">Email del participante</label>
@@ -688,7 +716,7 @@ main { padding-bottom: 24px; max-width: 1240px; }
       </div>
       <div class="intro">
         <h1 class="hero">¿A quién vas a atender hoy?</h1>
-        <p class="lede">Tres pasos y entras al box: sesiones de 8 a 12 minutos con informe al final.</p>
+        <p class="lede">Elige a quién atiendes y entra al box: sesiones de 8 a 12 minutos con informe al final.</p>
       </div>
 
       <div class="step">
@@ -717,13 +745,13 @@ main { padding-bottom: 24px; max-width: 1240px; }
       <p class="fine fine-left">Casos ficticios generados con IA. No introduzcas datos de pacientes reales. Puntuación formativa: no evalúa tu desempeño laboral.</p>
     </div>
 
-    <aside class="setup-side" aria-label="Ajustes de la sesión">
-      <div class="step-h"><span class="step-n" aria-hidden="true">3</span><h2>Ajusta la sesión</h2></div>
-      <div class="group">
-        <span class="group-label" id="lblProv">Modelo de IA</span>
-        <div class="seg" id="providerSeg" role="group" aria-labelledby="lblProv"></div>
-        <div class="help" id="providerHelp"></div>
+    <div class="sheet-bg" id="sheetBg"></div>
+    <aside class="setup-side" id="setupSide" aria-label="Ajustes de la sesión">
+      <div class="sheet-h">
+        <div class="sheet-case" id="sheetCase"></div>
+        <button type="button" class="sheet-x" id="sheetX" aria-label="Cerrar">×</button>
       </div>
+      <div class="step-h"><span class="step-n" aria-hidden="true">3</span><h2>Ajusta la sesión</h2></div>
       <div class="group">
         <span class="group-label" id="lblLevel">Nivel</span>
         <div class="seg" id="levelSeg" role="group" aria-labelledby="lblLevel"></div>
@@ -734,15 +762,18 @@ main { padding-bottom: 24px; max-width: 1240px; }
         <div class="seg" id="modeSeg" role="group" aria-labelledby="lblMode"></div>
         <div class="help" id="modeHelp"></div>
       </div>
-      <div class="group">
-        <span class="group-label" id="lblLang">Idioma <span class="hint-i">· informe en castellano</span></span>
-        <div class="seg" id="langSeg" role="group" aria-labelledby="lblLang"></div>
-      </div>
-      <div class="group">
-        <label class="group-label" for="voiceSel">Voz</label>
-        <div class="field-row"><select id="voiceSel"></select><button class="btn ghost" id="voiceTest" type="button" style="flex:0 0 auto">Probar</button></div>
-        <div class="help" id="voiceHelp"></div>
-      </div>
+      <details class="more-opts" id="moreOpts">
+        <summary>Más opciones</summary>
+        <div class="group">
+          <span class="group-label" id="lblLang">Idioma <span class="hint-i">· informe en castellano</span></span>
+          <div class="seg" id="langSeg" role="group" aria-labelledby="lblLang"></div>
+        </div>
+        <div class="group hidden" id="providerGroup">
+          <span class="group-label" id="lblProv">Modelo de IA <span class="hint-i">· solo Docencia</span></span>
+          <div class="seg" id="providerSeg" role="group" aria-labelledby="lblProv"></div>
+          <div class="help" id="providerHelp"></div>
+        </div>
+      </details>
       <div class="side-cta">
         <button class="btn big" id="startBtn" type="button">Entrar al box</button>
         <span class="cta-meta" id="ctaMeta"></span>
@@ -1326,22 +1357,9 @@ CASES.push(
 CASES[0].gender = "m"; CASES[1].gender = "f";
 const LOCALE = { es: "es-ES", ca: "ca-ES", en: "en-GB" };
 const CLAUDE_VOICES = ["ash", "onyx", "echo", "verse", "ballad", "coral", "sage", "shimmer", "nova"];
-state.voiceByCase = {};
-try { state.voiceByCase = JSON.parse(localStorage.getItem("empatia-voces") || "{}") || {}; } catch (e) {}
-function caseVoice(c) { const v = state.voiceByCase[c.id]; return CLAUDE_VOICES.includes(v) ? v : (c.gender === "f" ? "coral" : "ash"); }
-function fillVoiceSelect() {
-  const sel = $("voiceSel"); if (!sel) return;
-  const c = currentCase();
-  if (!tts) {
-    sel.innerHTML = `<option>No disponible aquí</option>`; sel.disabled = true; $("voiceTest").disabled = true;
-    $("voiceHelp").textContent = "La voz no está disponible en este navegador.";
-    return;
-  }
-  sel.disabled = false; $("voiceTest").disabled = false;
-  sel.innerHTML = CLAUDE_VOICES.map((n, i) => `<option value="${n}">Voz ${i + 1} · ${n}${i < 5 ? " (grave)" : " (aguda)"}</option>`).join("");
-  sel.value = caseVoice(c);
-  $("voiceHelp").textContent = `Pulsa Probar y elige la voz que mejor encaje con ${c.name}; se recuerda para este caso.`;
-}
+// Voz fija por personaje (OpenAI), elegida por edad y carácter
+const VOICE_BY_CASE = { box: "ash", masa: "sage", via: "coral", admision: "onyx", pcr: "shimmer", torax: "echo", antibiotico: "nova", identificacion: "verse" };
+function caseVoice(c) { return VOICE_BY_CASE[c.id] || (c.gender === "f" ? "coral" : "ash"); }
 
 const SHORT = {
   S1: ["S", "Setting"], P: ["P", "Percepción"], I: ["I", "Invitación"], K: ["K", "Conocimiento"], E: ["E", "Emociones"], S2: ["S", "Estrategia"],
@@ -1582,6 +1600,11 @@ function pickRole(v) {
   }
   renderSetup();
 }
+/* Hoja de ajustes en móvil y tableta */
+const isSheet = () => window.matchMedia("(max-width: 1000px)").matches;
+function openSheet() { $("setupSide").classList.add("open"); $("sheetBg").classList.add("on"); document.body.style.overflow = "hidden"; setTimeout(() => $("startBtn").focus({ preventScroll: true }), 300); }
+function closeSheet() { $("setupSide").classList.remove("open"); $("sheetBg").classList.remove("on"); document.body.style.overflow = ""; }
+try { const l = localStorage.getItem("empatia-idioma"); if (l && LANGS[l]) state.lang = l; } catch (e) {}
 function renderSetup() {
   seg("roleSeg", ROLE_SHORT, $("role").value, pickRole);
   const ordered = CASES.filter(c => fitFor(c).ok).concat(CASES.filter(c => !fitFor(c).ok));
@@ -1596,7 +1619,9 @@ function renderSetup() {
       <p class="scene">${esc(c.descr.replace(/^[^.]+\.\s*/, ""))}</p>
       <div class="chips"><span class="chip accent" title="${esc(c.family)}">${esc(c.emocion)} ${c.inicio}/10</span>${P.best[c.id] != null ? `<span class="chip rec" title="Tu mejor nota con ${esc(c.name)}">${ICON.star}Récord ${P.best[c.id]}</span>` : ""}${P.found[c.id] ? `<span class="chip found" title="${esc(REVEAL[c.id] || "")}">${ICON.open}Descubierta</span>` : `<span class="chip locked" title="Hay algo que ${esc(c.name)} no ha contado">${ICON.lock}Oculta</span>`}</div>
     </button>`; }).join("");
-  document.querySelectorAll("[data-case]").forEach(b => b.onclick = () => { state.caseId = b.dataset.case; renderSetup(); });
+  document.querySelectorAll("[data-case]").forEach(b => b.onclick = () => { state.caseId = b.dataset.case; renderSetup(); if (isSheet()) openSheet(); });
+  const sc = currentCase();
+  $("sheetCase").innerHTML = `<div class="avatar-wrap">${avatarHTML(sc, sc.inicio)}</div><div style="min-width:0"><b>${esc(sc.name)}, ${sc.age}</b><span>${esc(sc.title)} · ${esc(sc.emocion)} ${sc.inicio}/10</span></div>`;
   const voiceOK = !!dict;
   seg("modeSeg", [["voice", "Hablar"], ["text", "Escribir"]], state.mode, v => { if (v === "voice" && !voiceOK) return; state.mode = v; renderSetup(); });
   $("modeSeg").querySelector('[data-v="voice"]').disabled = !voiceOK;
@@ -1605,8 +1630,7 @@ function renderSetup() {
   seg("levelSeg", LEVELS.map(l => [l.n, l.name.split("· ")[1]]), state.level, v => { if (Number(v) === 3 && lock3) return; state.level = Number(v); renderSetup(); });
   if (lock3) { const b3 = $("levelSeg").querySelector('[data-v="3"]'); b3.setAttribute("data-locked", ""); b3.setAttribute("aria-disabled", "true"); b3.innerHTML = `Exigente${ICON.lock}`; b3.title = `Saca ${UNLOCK_SCORE} o más en Estándar con ${currentCase().name} para desbloquearlo`; }
   $("levelHelp").textContent = `${currentLevel().minutes} min · ${({ 1: "se calma pronto; pista en cada oportunidad", 2: "2–3 respuestas empáticas; máx. 3 pistas", 3: "interrumpe y plantea un dilema; sin pistas" })[state.level]}` + (lock3 ? ` · Exigente: saca ${UNLOCK_SCORE} en Estándar con ${currentCase().name} para desbloquearlo` : "");
-  seg("langSeg", [["es", "Castellano"], ["ca", "Català"], ["en", "English"]], state.lang, v => { state.lang = v; renderSetup(); });
-  fillVoiceSelect();
+  seg("langSeg", [["es", "Castellano"], ["ca", "Català"], ["en", "English"]], state.lang, v => { state.lang = v; try { localStorage.setItem("empatia-idioma", v); } catch (e) {} renderSetup(); });
   const FW = frameworkFor();
   $("roleHelp").innerHTML = `<span class="muted">Te evaluaremos con</span> <span class="fw-chip">${esc(FW.name)}</span><span class="plus">+</span><span class="fw-chip">${esc(FW.nurseName)}</span><span class="plus">+</span><span class="fw-chip">CARE</span>`;
   const c = currentCase();
@@ -2298,13 +2322,9 @@ document.addEventListener("keydown", e => {
   micPress();
 });
 
-$("voiceSel").onchange = e => {
-  state.voiceByCase[state.caseId] = e.target.value;
-  try { localStorage.setItem("empatia-voces", JSON.stringify(state.voiceByCase)); } catch (err) {}
-  if (tts) { stopSpeaking(); const was = state.ttsOn; state.ttsOn = true; speakAsync(currentCase().opening[state.lang]); state.ttsOn = was; }
-};
-
-$("voiceTest").onclick = () => { const was = state.ttsOn; state.ttsOn = true; stopSpeaking(); speakAsync(currentCase().opening[state.lang]); state.ttsOn = was; };
+$("sheetX").onclick = closeSheet;
+$("sheetBg").onclick = closeSheet;
+document.addEventListener("keydown", e => { if (e.key === "Escape" && $("setupSide").classList.contains("open")) closeSheet(); });
 function applyTheme(t) {
   if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
   else document.documentElement.removeAttribute("data-theme");
@@ -2444,7 +2464,7 @@ $("loginAgain").onclick = () => { $("loginForm").classList.remove("hidden"); $("
 async function loadProfile() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return null;
-  const { data, error } = await sb.from("profiles").select("id, pseudonym, role_label, is_admin, consent_at").eq("id", user.id).single();
+  const { data, error } = await sb.from("profiles").select("id, pseudonym, role_label, is_admin, consent_at, has_password").eq("id", user.id).single();
   if (error) return null;
   return data;
 }
@@ -2460,9 +2480,17 @@ async function enterApp() {
   if (p.role_label && ROLE_SHORT.some(r => r[0] === p.role_label)) { $("role").value = p.role_label; state.role = p.role_label; }
   if (!p.consent_at) { show("viewConsent"); return; }
   if (state.recovery || !p.has_password) { openPassword(state.recovery ? "reset" : "create"); return; }
-  await loadHistoryDB();
+  await Promise.all([loadHistoryDB(), loadSettings()]);
   renderSetup();
   show("viewSetup");
+}
+async function loadSettings() {
+  try {
+    const { data } = await sb.from("app_settings").select("key, value");
+    const m = Object.fromEntries((data || []).map(r => [r.key, r.value]));
+    state.defaultProvider = m.default_provider === "openai" ? "openai" : "anthropic";
+  } catch (e) { state.defaultProvider = "anthropic"; }
+  state.provider = state.defaultProvider;
 }
 function openPassword(mode) {
   state.pwMode = mode;
@@ -2517,8 +2545,11 @@ window.pickRole = function (v) {
 const _renderSetup = window.renderSetup;
 window.renderSetup = function () {
   _renderSetup();
+  const isAdm = !!(state.profile && state.profile.is_admin);
+  $("providerGroup").classList.toggle("hidden", !isAdm);
+  if (!isAdm) state.provider = state.defaultProvider || "anthropic";
   seg("providerSeg", [["anthropic", "Claude"], ["openai", "GPT"]], state.provider, v => { state.provider = v; renderSetup(); });
-  $("providerHelp").textContent = state.provider === "openai" ? "GPT (OpenAI) interpreta al personaje, da las pistas y evalúa." : "Claude (Anthropic) interpreta al personaje, da las pistas y evalúa.";
+  $("providerHelp").textContent = (state.provider === "openai" ? "GPT (OpenAI) interpreta al personaje, da las pistas y evalúa." : "Claude (Anthropic) interpreta al personaje, da las pistas y evalúa.") + ` Los participantes usan ${state.defaultProvider === "openai" ? "GPT" : "Claude"} (se cambia en el Panel de Docencia).`;
 };
 
 /* ---------- Guardado de sesiones ---------- */
@@ -2531,6 +2562,7 @@ async function loadHistoryDB() {
 }
 const _startSession = window.startSession;
 window.startSession = function () {
+  closeSheet();
   if (window.unlockAudio) unlockAudio();
   state.dbId = null;
   _startSession();
@@ -2605,6 +2637,13 @@ async function openStoredReport(id) {
 async function openAdmin() {
   if (!state.profile.is_admin) return;
   show("viewAdmin");
+  const drawDef = () => seg("defProvSeg", [["anthropic", "Claude"], ["openai", "GPT"]], state.defaultProvider || "anthropic", async v => {
+    const { error } = await sb.from("app_settings").upsert({ key: "default_provider", value: v, updated_at: new Date().toISOString() });
+    if (error) { $("defProvMsg").textContent = "No se ha podido guardar: " + error.message; return; }
+    state.defaultProvider = v; drawDef();
+    $("defProvMsg").textContent = `Guardado: los participantes usarán ${v === "openai" ? "GPT" : "Claude"} desde su próxima sesión.`;
+  });
+  drawDef();
   $("adminUsers").innerHTML = `<span class="spinner"></span>Cargando…`;
   $("adminSessions").innerHTML = "";
   try {

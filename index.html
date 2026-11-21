@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-yfr+pDOyNO3MC21/jDKT/XT7Q3puyWo2umulXJeiOyM=' 'sha256-m4oYAvZxAXTXFbPWTJRZGyNJxI45lk2BvX6M7DgP+Og='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-yfr+pDOyNO3MC21/jDKT/XT7Q3puyWo2umulXJeiOyM=' 'sha256-ePLhTURPxSIx2Vsoqzqwg//QVXSgC4zB8tFxX1Zhkvk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de empatía · Urgencias</title>
@@ -511,6 +511,30 @@ main { padding-bottom: 24px; max-width: 1240px; }
 .page-h h1 { font-size: 28px; }
 .table-card { overflow-x: auto; padding: 8px; max-width: 100%; }
 #viewHistory, #viewHistory > *, #histList { min-width: 0; max-width: 100%; }
+.pp { border: 1px solid var(--line); border-radius: 14px; background: var(--surface, transparent); }
+.pp + .pp { margin-top: 10px; }
+.pp > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; align-items: center; padding: 12px 14px; }
+.pp > summary::-webkit-details-marker { display: none; }
+.pp > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 14px; }
+.pp-id { min-width: 0; display: grid; gap: 2px; }
+.pp-id b { font-size: 16px; }
+.pp-id .muted { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-avg { text-align: right; line-height: 1.1; }
+.pp-avg b { font-size: 22px; display: block; }
+.pp-avg span { font-size: 11.5px; color: var(--muted); }
+.pp-k { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.pp-arrow { display: inline-block; transition: transform .2s; color: var(--muted); margin-right: 4px; }
+.pp[open] .pp-arrow { transform: rotate(90deg); }
+.pp-list { display: grid; gap: 8px; padding: 0 12px 12px; }
+.ps { border-top: 1px solid var(--line); padding: 10px 2px 2px; display: grid; gap: 6px; }
+.ps-h { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: start; }
+.ps-t { min-width: 0; }
+.ps-t b { display: block; font-size: 14.5px; }
+.ps-t span { font-size: 12.5px; color: var(--muted); }
+.ps-n { font-size: 20px; font-weight: 700; }
+.ps-n.na { font-size: 13px; font-weight: 600; color: var(--muted); }
+.ps-c { display: flex; flex-wrap: wrap; gap: 6px; }
+.ps-q { font-size: 13.5px; font-style: italic; color: var(--ink, inherit); border-left: 3px solid var(--accent-soft); padding: 2px 0 2px 10px; overflow-wrap: anywhere; }
 .dtable { width: 100%; border-collapse: collapse; font-size: 14px; }
 .dtable th, .dtable td { text-align: left; padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
 .dtable th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
@@ -700,8 +724,10 @@ main { padding-bottom: 24px; max-width: 1240px; }
       <details><summary>Precios usados para el coste (USD, editables)</summary><div id="mPrices" style="margin-top:10px"></div></details>
       <p class="muted" style="margin:0">Coste estimado con los precios de la tabla. La duración de la voz del personaje se estima por caracteres. Para el importe exacto, consulta la facturación de Anthropic y OpenAI.</p>
     </div>
-    <div class="card table-card"><h2 style="font-size:17px; padding:8px">Participantes</h2><div id="adminUsers"></div></div>
-    <div class="card table-card"><h2 style="font-size:17px; padding:8px">Sesiones (por seudónimo)</h2><div id="adminSessions"></div></div>
+    <div class="card" style="display:grid; gap:12px">
+      <div><h2 style="font-size:17px">Participantes y sesiones</h2><div class="muted" style="font-size:13.5px">Toca un participante para ver sus sesiones.</div></div>
+      <div id="adminUsers"></div>
+    </div>
   </section>
 
 
@@ -2645,17 +2671,11 @@ async function openAdmin() {
   });
   drawDef();
   $("adminUsers").innerHTML = `<span class="spinner"></span>Cargando…`;
-  $("adminSessions").innerHTML = "";
-  try {
-    const { users } = await fnJSON("admin", { action: "list" });
-    $("adminUsers").innerHTML = `<table class="dtable"><thead><tr><th>Email</th><th>Seudónimo</th><th>Estamento</th><th>Estado</th><th>Último acceso</th></tr></thead><tbody>${users.map(u => `
-      <tr><td>${esc(u.email)}</td><td><b>${esc(u.pseudonym || "—")}</b>${u.is_admin ? ` <span class="chip accent">Docencia</span>` : ""}</td><td>${esc(u.role_label || "—")}</td>
-      <td>${u.consent_at ? `<span class="chip accent">Activo</span>` : u.last_sign_in_at ? `<span class="chip">Sin consentimiento</span>` : `<span class="chip">Invitado</span>`}</td>
-      <td>${u.last_sign_in_at ? fmtDate(u.last_sign_in_at) : "—"}</td></tr>`).join("")}</tbody></table>`;
-  } catch (e) { $("adminUsers").textContent = "No se ha podido cargar la lista: " + (e.message || ""); }
+  let users = null;
+  try { ({ users } = await fnJSON("admin", { action: "list" })); } catch (e) { users = null; }
   const [{ data: sess }, { data: profs }] = await Promise.all([
-    sb.from("sessions").select("id, user_id, case_id, level, provider, role_label, started_at, duration_s, total, exited, hints, scores, feedback").order("started_at", { ascending: false }).limit(500),
-    sb.from("profiles").select("id, pseudonym")
+    sb.from("sessions").select("id, user_id, case_id, level, provider, role_label, started_at, duration_s, total, exited, hints, scores, feedback, oculta:report->oculta_descubierta").order("started_at", { ascending: false }).limit(500),
+    sb.from("profiles").select("id, pseudonym, role_label, is_admin")
   ]);
   loadMetrics();
   const ps = new Map((profs || []).map(p => [p.id, p.pseudonym]));
@@ -2667,9 +2687,52 @@ async function openAdmin() {
     <div class="stat"><b>${state.adminRows.length}</b><span>sesiones</span></div>
     <div class="stat"><b>${done.length}</b><span>con informe</span></div>
     <div class="stat"><b>${avg ?? "—"}</b><span>nota media</span></div>`;
-  $("adminSessions").innerHTML = state.adminRows.length ? `<table class="dtable"><thead><tr><th>Fecha</th><th>Seudónimo</th><th>Estamento</th><th>Caso</th><th>Nivel</th><th>Modelo</th><th>Nota</th><th>Utilidad</th><th>Realismo</th></tr></thead><tbody>${state.adminRows.map(s => `
-    <tr><td>${fmtDate(s.started_at)}</td><td><b>${esc(s.pseudonym)}</b></td><td>${esc(s.role_label || "—")}</td><td>${esc(caseTitle(s.case_id))}</td><td>${s.level}</td><td>${s.provider === "openai" ? "GPT" : "Claude"}</td>
-    <td>${s.total != null ? s.total : s.exited ? "Sin evaluar" : "—"}</td><td>${s.feedback?.util ?? "—"}</td><td>${s.feedback?.real ?? "—"}</td></tr>`).join("")}</tbody></table>` : `<span class="muted">Aún no hay sesiones.</span>`;
+  // Coste por sesión (todas las llamadas de esas sesiones)
+  const costBy = new Map();
+  const ids = state.adminRows.map(s => s.id);
+  for (let i = 0; i < ids.length; i += 150) {
+    const { data: cc } = await sb.from("api_calls_cost").select("session_id, cost_usd").in("session_id", ids.slice(i, i + 150)).limit(10000);
+    (cc || []).forEach(c => costBy.set(c.session_id, (costBy.get(c.session_id) || 0) + (Number(c.cost_usd) || 0)));
+  }
+  drawPeople(users, profs || [], costBy);
+}
+function drawPeople(users, profs, costBy) {
+  const bySess = new Map();
+  state.adminRows.forEach(s => { if (!bySess.has(s.user_id)) bySess.set(s.user_id, []); bySess.get(s.user_id).push(s); });
+  let people = users ? users.map(u => ({ ...u })) : profs.map(p => ({ ...p }));
+  const known = new Set(people.map(p => p.id));
+  profs.forEach(p => { if (!known.has(p.id) && bySess.has(p.id)) people.push({ ...p }); });
+  people.forEach(p => { p.sess = bySess.get(p.id) || []; p.last = p.sess[0]?.started_at || ""; });
+  people.sort((a, b) => (b.last || "").localeCompare(a.last || "") || String(a.pseudonym || a.email || "").localeCompare(String(b.pseudonym || b.email || "")));
+  if (!people.length) { $("adminUsers").innerHTML = `<span class="muted">Aún no hay participantes.</span>`; return; }
+  const status = u => u.consent_at ? `<span class="chip accent">Activo</span>` : u.last_sign_in_at ? `<span class="chip">Sin consentimiento</span>` : users ? `<span class="chip">Invitado</span>` : "";
+  const mins = s => s == null ? "—" : s < 60 ? s + " s" : Math.round(s / 60) + " min";
+  const sessCard = s => {
+    const c = costBy.get(s.id), sc = s.scores || {}, fb = s.feedback || {};
+    const chips = [
+      sc.b != null ? `<span class="chip">Estructura ${sc.b}</span>` : "",
+      sc.n != null ? `<span class="chip">NURSE ${sc.n}</span>` : "",
+      sc.g != null ? `<span class="chip">Global ${sc.g}</span>` : "",
+      sc.pen ? `<span class="chip">Penalización −${sc.pen}</span>` : "",
+      `<span class="chip">Pistas ${s.hints ?? 0}</span>`,
+      s.total != null ? (s.oculta === true ? `<span class="chip accent">Oculta descubierta</span>` : `<span class="chip">Oculta no descubierta</span>`) : "",
+      `<span class="chip">Coste ${c != null ? fmtUsd(c) : "—"}</span>`,
+      fb.util != null ? `<span class="chip accent">Utilidad ${fb.util}/5</span>` : "",
+      fb.real != null ? `<span class="chip accent">Realismo ${fb.real}/5</span>` : ""
+    ].join("");
+    return `<div class="ps"><div class="ps-h"><div class="ps-t"><b>${esc(caseTitle(s.case_id))}</b><span>${fmtDate(s.started_at)} · Nivel ${s.level} · ${s.provider === "openai" ? "GPT" : "Claude"} · ${mins(s.duration_s)}${s.role_label ? " · " + esc(s.role_label) : ""}</span></div>
+      ${s.total != null ? `<div class="ps-n">${s.total}</div>` : `<div class="ps-n na">${s.exited ? "Sin evaluar" : "En curso"}</div>`}</div>
+      <div class="ps-c">${chips}</div>${fb.comment ? `<div class="ps-q">«${esc(fb.comment)}»</div>` : ""}</div>`;
+  };
+  $("adminUsers").innerHTML = people.map(p => {
+    const d = p.sess.filter(s => s.total != null), a = d.length ? Math.round(d.reduce((x, s) => x + s.total, 0) / d.length) : null;
+    const cost = p.sess.reduce((x, s) => x + (costBy.get(s.id) || 0), 0);
+    const sub = [p.email, p.role_label].filter(Boolean).map(esc).join(" · ");
+    return `<details class="pp"><summary><div class="pp-id"><div><span class="pp-arrow" aria-hidden="true">›</span><b>${esc(p.pseudonym || "Sin seudónimo")}</b>${p.is_admin ? ` <span class="chip accent">Docencia</span>` : ""}</div>${sub ? `<span class="muted">${sub}</span>` : ""}</div>
+      <div class="pp-avg"><b>${a ?? "—"}</b><span>nota media</span></div>
+      <div class="pp-k">${status(p)}<span class="chip">${p.sess.length} ${p.sess.length === 1 ? "sesión" : "sesiones"}</span>${p.sess.length ? `<span class="chip">Coste ${fmtUsd(cost)}</span>` : ""}<span class="chip">${p.last ? "Última " + fmtDate(p.last) : p.last_sign_in_at ? "Acceso " + fmtDate(p.last_sign_in_at) : "Sin acceso"}</span></div></summary>
+      <div class="pp-list">${p.sess.length ? p.sess.map(sessCard).join("") : `<div class="muted" style="padding:6px 2px">Todavía no ha hecho ninguna sesión.</div>`}</div></details>`;
+  }).join("");
 }
 /* ---------- Consumo y rendimiento ---------- */
 const STEP_NAME = { patient: "Personaje", coach: "Pistas", eval: "Evaluación", tts: "Voz", stt: "Transcripción", default: "Personaje", quick: "Pistas", complex: "Evaluación" };

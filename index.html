@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-ZiLH008RAIApWeeB0jrhjyEaux3v74Ix3FlvTm0AIa8=' 'sha256-RSd7e50VmBON5/tIBvG+fVJJ5ytbYP0Mr8KJc5WE2aI='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-TPdXQ+1Pcm0j/ry5IfXkulLYjBszQiW00/sUL2fYKIw=' 'sha256-RSd7e50VmBON5/tIBvG+fVJJ5ytbYP0Mr8KJc5WE2aI='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de empatía · Urgencias</title>
@@ -469,6 +469,14 @@ main { padding-bottom: 24px; max-width: 1240px; }
 .avatar-wrap .face { animation: none !important; }
 .avatar-wrap.speaking::after { display: none; }
 .caption, .msg.patient, .fw-chip { animation: none !important; }
+/* Mientras piensa: bocadillo con puntos junto a la cara (no mueve la cara) */
+.avatar-wrap.thinking::before { content: ""; position: absolute; top: -4px; right: -10px; width: 46px; height: 26px; border-radius: 14px 14px 14px 4px; background-color: var(--surface, #fff); border: 1.5px solid var(--line); box-shadow: 0 2px 6px rgba(0,0,0,.12); z-index: 2;
+  background-image: radial-gradient(circle, var(--accent) 3.2px, transparent 3.6px), radial-gradient(circle, var(--accent) 3.2px, transparent 3.6px), radial-gradient(circle, var(--accent) 3.2px, transparent 3.6px);
+  background-size: 10px 10px; background-repeat: no-repeat; background-position: 7px 7px, 17px 7px, 27px 7px; animation: dots 1.2s steps(1) infinite; }
+@keyframes dots { 0% { background-position: 7px 7px, 17px 40px, 27px 40px; } 33% { background-position: 7px 7px, 17px 7px, 27px 40px; } 66%, 100% { background-position: 7px 7px, 17px 7px, 27px 7px; } }
+.avatar-wrap.thinking .ring { animation: breathe 1.6s ease-in-out infinite; }
+@keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .avatar-wrap.thinking::before, .avatar-wrap.thinking .ring { animation: none; } }
 .case:hover { transform: none; }
 
 .autosend { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); cursor: pointer; }
@@ -1755,7 +1763,7 @@ Conversación hasta ahora:
 ${transcriptText(state.turns)}
 
 Devuelve SOLO un JSON válido, sin texto adicional:
-{"respuesta":"lo que dices ahora","intensidad":numero,"motivo_cambio":"en español, máximo 12 palabras, por qué cambió o no la intensidad","fin":true|false}`;
+{"respuesta":"lo que dices ahora","intensidad":numero,"motivo_cambio":"en español, máximo 6 palabras","fin":true|false}`;
 }
 
 function coachPrompt() {
@@ -1943,6 +1951,7 @@ function setPhase(p, sub) {
   $("vStatus").textContent = a;
   $("vSub").textContent = sub || b;
   $("avatarWrap").classList.toggle("speaking", p === "speaking");
+  $("avatarWrap").classList.toggle("thinking", p === "thinking");
   $("bigMic").classList.toggle("listening", p === "listening");
   $("bigMic").setAttribute("aria-label", p === "listening" ? "Terminar y enviar" : "Hablar");
   $("bigMic").disabled = p === "thinking" || p === "ended";
@@ -1987,6 +1996,10 @@ async function finishListening() {
   clearTimeout(V.timer);
   if (V.phase !== "listening") return;
   V.stopping = true;
+  // Respuesta inmediata al soltar el micro: no esperamos a la transcripción para que se note que te ha oído
+  hideSbar();
+  $("vStatus").textContent = `${currentCase().name} te ha oído…`; $("vSub").textContent = "";
+  $("avatarWrap").classList.add("thinking"); $("bigMic").disabled = true;
   try { await dict.stop(); } catch (e) {}
   commitVoice();
   V.stopping = false;

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-2ux7MmfBhAJyp2s/HqdQZ6sOH9RzfbzfBTZt4+5gUJw=' 'sha256-M8cQYCMsEvk+idAvk8tJvqGRZl0MUKOJMWHCGNPNAI0=' 'sha256-ptszVzDipi6/eDBb9Xukxmhm62yCZe/NMq6U3jlF8AQ='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co https://api.simli.ai wss://api.simli.ai https://*.simli.ai wss://*.simli.ai https://*.livekit.cloud wss://*.livekit.cloud; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-uj+JRghurc1g2ZRXo4X1ONIuYWoRor4+EVcemIV8XKE=' 'sha256-M8cQYCMsEvk+idAvk8tJvqGRZl0MUKOJMWHCGNPNAI0=' 'sha256-BSamfpxzf/xPmmMFnYfRCx/si7PGpYUTTbz/M4m9QXI='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co https://api.simli.ai wss://api.simli.ai https://*.simli.ai wss://*.simli.ai https://*.livekit.cloud wss://*.livekit.cloud; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de empatía · Urgencias</title>
@@ -1271,11 +1271,10 @@ function faceDisconnect() {
 function frameOf(id) {
   const f = (state.faceFrames || {})[id];
   if (f) return { z: Number(f.z) || 1, x: Number(f.x) || 0, y: Number(f.y) || 0 };
-  // Sin encuadre guardado: si el vídeo es apaisado, se amplía hasta llenar el círculo y se lleva a la izquierda,
-  // que es donde Simli coloca a la persona
+  // Sin encuadre guardado: si el vídeo es apaisado, se amplía hasta llenar el círculo, centrado
   const v = $("simliVideo"), r = v && v.videoWidth && v.videoHeight ? v.videoWidth / v.videoHeight : 1;
   const z = r > 1.05 ? Math.round(r * 100) / 100 : 1;
-  return { z, x: Math.round((z - 1) / 2 * 100), y: 0 };
+  return { z, x: 0, y: 0 };
 }
 function applyFrame(f) {
   f = f || frameOf(FACE.faceId);
@@ -1287,7 +1286,7 @@ function frameFromSliders() { return { z: Number($("fz").value), x: Number($("fx
 async function saveFrame() {
   if (!FACE.faceId) return;
   state.faceFrames = { ...(state.faceFrames || {}), [FACE.faceId]: frameFromSliders() };
-  try { await sb.from("app_settings").upsert({ key: "face_frames", value: state.faceFrames, updated_at: new Date().toISOString() }); } catch (e) {}
+  try { await sb.from("app_settings").upsert({ key: "face_frames_v2", value: state.faceFrames, updated_at: new Date().toISOString() }); } catch (e) {}
 }
 
 // Espera a que la cara esté lista (como mucho unos segundos) antes de que el personaje hable
@@ -2958,7 +2957,7 @@ async function loadSettings() {
     const m = Object.fromEntries((data || []).map(r => [r.key, r.value]));
     state.defaultProvider = m.default_provider === "openai" ? "openai" : "anthropic";
     state.usdEur = Number(m.usd_eur) > 0 ? Number(m.usd_eur) : 0.88;
-    try { const ff = m.face_frames; state.faceFrames = typeof ff === "string" ? JSON.parse(ff) : (ff && typeof ff === "object" ? ff : {}); } catch (e) { state.faceFrames = {}; }
+    try { const ff = m.face_frames_v2; state.faceFrames = typeof ff === "string" ? JSON.parse(ff) : (ff && typeof ff === "object" ? ff : {}); } catch (e) { state.faceFrames = {}; }
   } catch (e) { state.defaultProvider = "anthropic"; }
   state.provider = state.defaultProvider;
 }

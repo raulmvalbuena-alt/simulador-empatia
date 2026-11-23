@@ -13,7 +13,8 @@ csp = "; ".join([
     "font-src https://fonts.gstatic.com",
     "img-src 'self' data: blob:",
     "media-src 'self' data: blob:",
-    f"connect-src 'self' {SB} {SB.replace('https', 'wss')}",
+    # Simli (cara realista, prueba de Docencia): señal y vídeo
+    f"connect-src 'self' {SB} {SB.replace('https', 'wss')} https://api.simli.ai wss://api.simli.ai https://*.simli.ai wss://*.simli.ai https://*.livekit.cloud wss://*.livekit.cloud",
     "manifest-src 'self'", "worker-src 'self'",
     "base-uri 'none'", "form-action 'self'", "object-src 'none'",
 ])

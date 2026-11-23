@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-wJmvyvHeqgX0xR0/eWjoBS4HFNYzECwt9Gv3Cl1gMEU=' 'sha256-M8cQYCMsEvk+idAvk8tJvqGRZl0MUKOJMWHCGNPNAI0=' 'sha256-ptszVzDipi6/eDBb9Xukxmhm62yCZe/NMq6U3jlF8AQ='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co https://api.simli.ai wss://api.simli.ai https://*.simli.ai wss://*.simli.ai https://*.livekit.cloud wss://*.livekit.cloud; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-2ux7MmfBhAJyp2s/HqdQZ6sOH9RzfbzfBTZt4+5gUJw=' 'sha256-M8cQYCMsEvk+idAvk8tJvqGRZl0MUKOJMWHCGNPNAI0=' 'sha256-ptszVzDipi6/eDBb9Xukxmhm62yCZe/NMq6U3jlF8AQ='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co https://api.simli.ai wss://api.simli.ai https://*.simli.ai wss://*.simli.ai https://*.livekit.cloud wss://*.livekit.cloud; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de empatía · Urgencias</title>
@@ -186,7 +186,7 @@ input[type=text]:focus, select:focus, textarea:focus { border-color: var(--accen
 /* Cara realista (Simli, prueba para Docencia): vídeo dentro del mismo círculo que el dibujo */
 .avatar-holder { position: relative; }
 .simli-face { position: absolute; inset: 18px; border-radius: 50%; overflow: hidden; z-index: 1; background: #0b1117; opacity: 0; pointer-events: none; transition: opacity .4s ease; }
-.simli-face video { width: 100%; height: 100%; object-fit: cover; transform: translate(var(--fx, 0%), var(--fy, 0%)) scale(var(--fz, 1)); transform-origin: 50% 50%; }
+.simli-face video { width: 100%; height: 100%; object-fit: contain; transform: translate(var(--fx, 0%), var(--fy, 0%)) scale(var(--fz, 1)); transform-origin: 50% 50%; }
 .frame-btn { border: 0; background: none; color: var(--accent); font-weight: 600; font-size: 13px; padding: 4px 8px; }
 .frame-ctl { width: min(100%, 300px); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; font-size: 13px; color: var(--muted); text-align: left; }
 .frame-ctl label { display: grid; grid-template-columns: 78px 1fr; align-items: center; gap: 8px; margin: 4px 0; }
@@ -878,9 +878,9 @@ main { padding-bottom: 24px; max-width: 1240px; }
           </div>
           <button class="frame-btn hidden" id="frameBtn" type="button">Encuadrar la cara</button>
           <div class="frame-ctl hidden" id="frameCtl">
-            <label>Tamaño <input id="fz" type="range" min="0.5" max="3" step="0.05" value="1"></label>
-            <label>Horizontal <input id="fx" type="range" min="-60" max="60" step="1" value="0"></label>
-            <label>Vertical <input id="fy" type="range" min="-60" max="60" step="1" value="0"></label>
+            <label>Tamaño <input id="fz" type="range" min="0.5" max="5" step="0.05" value="1"></label>
+            <label>Horizontal <input id="fx" type="range" min="-150" max="150" step="1" value="0"></label>
+            <label>Vertical <input id="fy" type="range" min="-150" max="150" step="1" value="0"></label>
             <div>Se guarda para esta cara y lo verán todos.</div>
           </div>
           <div class="pname" id="pName"></div>
@@ -1236,6 +1236,7 @@ function faceConnect(c) {
       FACE.live = true;
       FACE.faceId = d.faceId || FACE_BY_CASE[c.id];
       applyFrame();
+      $("simliVideo").addEventListener("resize", () => applyFrame(), { once: true });
       $("avatarHolder").classList.add("live");
       $("frameBtn").classList.remove("hidden");
       return true;
@@ -1267,7 +1268,15 @@ function faceDisconnect() {
   if (cl) { try { cl.stop(); } catch (e) {} }
 }
 /* Encuadre de cada cara dentro del círculo (lo ajusta Docencia una vez y se guarda para todos) */
-function frameOf(id) { const f = (state.faceFrames || {})[id] || {}; return { z: Number(f.z) || 1, x: Number(f.x) || 0, y: Number(f.y) || 0 }; }
+function frameOf(id) {
+  const f = (state.faceFrames || {})[id];
+  if (f) return { z: Number(f.z) || 1, x: Number(f.x) || 0, y: Number(f.y) || 0 };
+  // Sin encuadre guardado: si el vídeo es apaisado, se amplía hasta llenar el círculo y se lleva a la izquierda,
+  // que es donde Simli coloca a la persona
+  const v = $("simliVideo"), r = v && v.videoWidth && v.videoHeight ? v.videoWidth / v.videoHeight : 1;
+  const z = r > 1.05 ? Math.round(r * 100) / 100 : 1;
+  return { z, x: Math.round((z - 1) / 2 * 100), y: 0 };
+}
 function applyFrame(f) {
   f = f || frameOf(FACE.faceId);
   const el = document.querySelector(".simli-face");

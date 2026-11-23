@@ -9,6 +9,7 @@ const $ = id => document.getElementById(id);
 
 const CASE = { id: "box", name: "Javier", age: 52, emocion: "enfado", voice: "ash" };
 const OPENING = "¡Por fin alguien! Seis horas. ¡Seis! Mi madre tiene 88 años y nadie nos dice nada. ¿A esto le llamáis urgencias?";
+let simliWarn = () => {};
 let role = "Médico adjunto", emotion = 7, turns = [], simli = null, busy = false, turnT0 = 0, marks = {};
 
 async function fnFetch(name, body, signal) {
@@ -210,10 +211,12 @@ async function connect() {
     const { session_token } = await fnJSON("simli", faceId ? { faceId } : {});
     simli = new SimliClient(session_token, $("video"), $("audio"), null, LogLevel.ERROR);
     simli.on("error", m => { fail({ message: "Simli: " + m }); });
+    simli.on("warning", m => simliWarn(m));
     simli.on("stop", () => { say("La sesión de la cara ha terminado."); disconnect(true); });
     simli.on("speaking", () => { if (turnT0 && !marks.speaking) { marks.speaking = performance.now(); showTimes(); } say("Javier está hablando…"); });
     simli.on("silent", () => { if (!busy) say("Tu turno"); });
     await simli.start();
+    applyCamera(0);
     $("ph").style.display = "none";
     ["input", "send", "mic", "hang"].forEach(id => $(id).disabled = false);
     say("Conectado");
@@ -231,6 +234,18 @@ async function disconnect(already) {
   $("connect").disabled = false; $("ph").style.display = "";
   if (!already) say("Colgado. Puedes volver a conectar.");
 }
+
+/* Encuadre de la cara: se cambia en directo y se recuerda en este dispositivo */
+const CAM_KEY = "pruebaCaraCam";
+try { const c = JSON.parse(localStorage.getItem(CAM_KEY) || "null"); if (c) { $("zoom").value = c.zoom; $("px").value = c.px; $("py").value = c.py; } } catch (e) {}
+function applyCamera(lerp = 0.25) {
+  const c = { zoom: Number($("zoom").value), px: Number($("px").value), py: Number($("py").value) };
+  try { localStorage.setItem(CAM_KEY, JSON.stringify(c)); } catch (e) {}
+  if (!simli || typeof simli.setCamera !== "function") return;
+  try { simli.setCamera({ zoom: c.zoom, pos_x_off: c.px, pos_y_off: c.py }, { lerpSeconds: lerp }); } catch (e) { fail({ message: "No se ha podido mover la cara: " + (e.message || e) }); }
+}
+["zoom", "px", "py"].forEach(id => $(id).addEventListener("input", () => applyCamera()));
+simliWarn = m => { if (/WARNING/i.test(m)) console.warn(m); };
 
 $("connect").onclick = connect;
 $("hang").onclick = () => disconnect(false);

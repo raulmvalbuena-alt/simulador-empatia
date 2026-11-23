@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-YffTdFdTtZ6JGBua9mWmj5hvX4H2rp86GjkRylST3ao=' 'sha256-zrwXP58SmtIXonMTlRL4gViPLJ7klb67pq+gsbk3G0s=' 'sha256-RSd7e50VmBON5/tIBvG+fVJJ5ytbYP0Mr8KJc5WE2aI='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-WNWFqHfeOdzfw/u+JkQ6YDoT6udfI2zQeZvqZ1tz4vQ=' 'sha256-M8cQYCMsEvk+idAvk8tJvqGRZl0MUKOJMWHCGNPNAI0=' 'sha256-zpF4q9U41SMVnNumV5gwhMEF8lc1P/xmt6ZU27Gsqik='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de empatía · Urgencias</title>
@@ -183,6 +183,12 @@ input[type=text]:focus, select:focus, textarea:focus { border-color: var(--accen
 .timebar.over span { background: var(--mid); }
 .timetext { margin: 4px 18px 0; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; display: flex; justify-content: space-between; gap: 10px; }
 .persona { display: grid; justify-items: center; gap: 4px; padding: 14px 18px 4px; text-align: center; }
+/* Cara realista (Simli, prueba para Docencia): vídeo dentro del mismo círculo que el dibujo */
+.avatar-holder { position: relative; }
+.simli-face { position: absolute; inset: 18px; border-radius: 50%; overflow: hidden; z-index: 1; background: #0b1117; opacity: 0; pointer-events: none; transition: opacity .4s ease; }
+.simli-face video { width: 100%; height: 100%; object-fit: cover; transform: scale(var(--face-zoom, 1.6)); transform-origin: 50% var(--face-y, 30%); }
+.avatar-holder.live .simli-face { opacity: 1; }
+.avatar-holder.live .avatar-wrap .face { visibility: hidden; }
 .pname { font-family: var(--font-display); font-size: 22px; font-weight: 700; margin-top: 4px; }
 .emo { font-size: 15px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; justify-content: center; }
 .emo b { font-family: var(--font-display); font-size: 22px; font-variant-numeric: tabular-nums; }
@@ -829,6 +835,14 @@ main { padding-bottom: 24px; max-width: 1240px; }
           <div class="seg" id="providerSeg" role="group" aria-labelledby="lblProv"></div>
           <div class="help" id="providerHelp"></div>
         </div>
+        <div class="group hidden" id="faceGroup">
+          <span class="group-label" id="lblFace">Cara del personaje <span class="hint-i">· prueba, solo Docencia</span></span>
+          <div class="seg" id="faceSeg" role="group" aria-labelledby="lblFace">
+            <button type="button" data-face="on">Realista</button>
+            <button type="button" data-face="off">Dibujo</button>
+          </div>
+          <div class="help">La realista usa minutos de la cuenta de Simli.</div>
+        </div>
       </details>
       <div class="side-cta">
         <button class="btn big" id="startBtn" type="button">Entrar al box</button>
@@ -853,7 +867,11 @@ main { padding-bottom: 24px; max-width: 1240px; }
         <div class="timetext"><span><span id="clock">00:00</span> de <span id="limit"></span></span><span id="timeMsg"></span></div>
 
         <div class="persona">
-          <div class="avatar-wrap big" id="avatarWrap"></div>
+          <div class="avatar-holder" id="avatarHolder">
+            <div class="avatar-wrap big" id="avatarWrap"></div>
+            <div class="simli-face" aria-hidden="true"><video id="simliVideo" autoplay playsinline muted></video></div>
+            <audio id="simliAudio" autoplay playsinline></audio>
+          </div>
           <div class="pname" id="pName"></div>
           <div class="emo"><span id="emoLabel"></span><span><b id="emoVal"></b> / 10</span><span id="emoDelta" class="delta hidden"></span></div>
           <div class="meter" aria-hidden="true"><span class="meter-dot" id="meterDot"></span></div>
@@ -1030,11 +1048,14 @@ function makeTTS() {
        Devuelve null si el navegador no puede (entonces se usa la voz normal). */
     stream(onStart) {
       this.stop();
-      const ac = ensureAC();
-      if (!ac || ac.state !== "running" || !window.ReadableStream) return null;
+      if (!window.ReadableStream) return null;
+      // Con cara realista el audio va a Simli (que lo devuelve sincronizado con los labios); si no, se reproduce aquí
+      const sink = faceActive() ? faceSink() : null;
+      const ac = sink ? null : ensureAC();
+      if (!sink && (!ac || ac.state !== "running")) return null;
       const voice = caseVoice(currentCase());
       const ctl = new AbortController(), items = [], nodes = new Set();
-      let cur = 0, ended = false, nextT = 0, started = false, finished = false, res_, rej_;
+      let cur = 0, ended = false, nextT = 0, started = false, finished = false, waiting = false, res_, rej_;
       const done = new Promise((a, b) => { res_ = a; rej_ = b; });
       done.catch(() => {});
       const finish = err => {
@@ -1043,6 +1064,7 @@ function makeTTS() {
         try { player.pause(); player.loop = false; } catch (e) {}
         if (live === L) live = null;
         if (err) {
+          if (sink) sink.clear();
           ctl.abort();
           nodes.forEach(n => { try { n.stop(); } catch (e) {} });
           nodes.clear();
@@ -1050,7 +1072,11 @@ function makeTTS() {
         } else res_();
         stateCb({ state: "idle", reason: err ? "viewer_stopped" : "completed" });
       };
-      const check = () => { if (!finished && ended && cur >= items.length && nodes.size === 0) finish(); };
+      const check = () => {
+        if (finished || !ended || cur < items.length) return;
+        if (sink) { if (!waiting) { waiting = true; sink.flush(); sink.idle().then(() => finish()); } return; }
+        if (nodes.size === 0) finish();
+      };
       const schedule = (it, bytes) => {
         let b = bytes;
         if (it.left) { const m = new Uint8Array(it.left.length + b.length); m.set(it.left); m.set(b, it.left.length); b = m; it.left = null; }
@@ -1058,6 +1084,14 @@ function makeTTS() {
         const n = b.length / 2;
         if (!n) return;
         const dv = new DataView(b.buffer, b.byteOffset, b.length);
+        if (sink) {
+          const pcm = new Int16Array(n);
+          for (let i = 0; i < n; i++) pcm[i] = dv.getInt16(i * 2, true);
+          it.rs = it.rs || sink.resampler();
+          sink.write(it.rs(pcm));
+          if (!started) { started = true; stateCb({ state: "speaking" }); if (onStart) onStart(); }
+          return;
+        }
         const buf = ac.createBuffer(1, n, 24000), ch = buf.getChannelData(0);
         for (let i = 0; i < n; i++) ch[i] = dv.getInt16(i * 2, true) / 32768;
         const src = ac.createBufferSource();
@@ -1158,6 +1192,101 @@ function makeTTS() {
         if (audio === a) { audio = null; stateCb({ state: "idle", reason: "completed" }); }
       }
     }
+  };
+}
+
+/* Cara realista (prueba V2 con Simli, solo Docencia): Simli recibe la voz del personaje y devuelve
+   vídeo con los labios sincronizados. Si algo falla, se vuelve al dibujo y a la voz normal. */
+const FACE_BY_CASE = { box: "3bad681f-1b4a-4507-bc54-fbc675c191b7", masa: "5a83913c-411b-4afd-8432-b7d685e2aee6", via: "80459b57-2d66-4ca7-8682-59e1c649bc53", admision: "99767950-9d68-4783-a305-9118006d3363", pcr: "1d032d8b-0cff-4156-9f0d-f001f0738d9c", torax: "9fcd5739-bf66-49a5-b525-d02d7f0bc2fc", antibiotico: "f735e62c-dce7-4c0b-8e85-1c7e21774c45", identificacion: "03ce3ee8-db97-4150-a333-8f643d48fee9" };
+const FACE = { client: null, ready: null, live: false, onSilent: null, sid: 0 };
+const faceWanted = () => !!(state.profile && state.profile.is_admin) && (() => { try { return localStorage.getItem("faceMode") !== "off"; } catch (e) { return true; } })();
+const faceActive = () => FACE.live && !!FACE.client;
+let simliMod = null;
+function faceConnect(c) {
+  faceDisconnect();
+  if (!faceWanted() || !window.RTCPeerConnection) return;
+  const sid = ++FACE.sid;
+  try { $("simliAudio").play().catch(() => {}); } catch (e) {}
+  FACE.ready = (async () => {
+    try {
+      simliMod = simliMod || await import("./vendor/simli-client.js");
+      const d = await fnJSON("simli", { faceId: FACE_BY_CASE[c.id] || "" });
+      if (sid !== FACE.sid) return false;
+      const cl = new simliMod.SimliClient(d.session_token, $("simliVideo"), $("simliAudio"), null, simliMod.LogLevel.ERROR);
+      cl.on("silent", () => { if (FACE.onSilent) FACE.onSilent(); });
+      cl.on("stop", () => { if (FACE.client === cl) faceFallback("La cara realista se ha desconectado; sigue con el dibujo."); });
+      cl.on("error", m => { console.warn("simli", m); });
+      FACE.client = cl;
+      await cl.start();
+      if (sid !== FACE.sid) { try { cl.stop(); } catch (e) {} return false; }
+      FACE.live = true;
+      $("avatarHolder").classList.add("live");
+      return true;
+    } catch (e) {
+      console.warn("simli", e);
+      if (sid === FACE.sid) faceFallback("No se ha podido cargar la cara realista; sigue con el dibujo.");
+      return false;
+    }
+  })();
+}
+function faceFallback(msg) {
+  const had = FACE.live || FACE.client;
+  faceDisconnect();
+  if (had && msg && $("viewSession") && !$("viewSession").classList.contains("hidden")) addMsg("sys", msg);
+}
+function faceDisconnect() {
+  FACE.sid++;
+  const cl = FACE.client;
+  FACE.client = null; FACE.live = false; FACE.ready = null; FACE.onSilent = null;
+  const h = $("avatarHolder"); if (h) h.classList.remove("live");
+  if (cl) { try { cl.stop(); } catch (e) {} }
+}
+// Espera a que la cara esté lista (como mucho unos segundos) antes de que el personaje hable
+async function faceWait(ms = 7000) {
+  if (!FACE.ready) return faceActive();
+  await Promise.race([FACE.ready, new Promise(r => setTimeout(r, ms))]);
+  return faceActive();
+}
+// Destino del audio cuando hay cara: 24 kHz de OpenAI → 16 kHz que pide Simli, en trozos de ~0,19 s
+function faceSink() {
+  let out = new Uint8Array(0), endAt = 0;
+  const send = force => {
+    while (out.length >= 6000 || (force && out.length >= 2)) {
+      const n = Math.min(6000, out.length) & ~1;
+      const cl = FACE.client;
+      if (cl) { try { cl.sendAudioData(out.slice(0, n)); } catch (e) {} }
+      endAt = Math.max(endAt, performance.now() + 350) + (n / 32000) * 1000;
+      out = out.slice(n);
+    }
+  };
+  return {
+    resampler() {
+      let buf = new Float32Array(0), pos = 0;
+      return int16 => {
+        const nb = new Float32Array(buf.length + int16.length); nb.set(buf); nb.set(int16, buf.length); buf = nb;
+        const vals = [];
+        while (pos + 1 < buf.length) { const i = Math.floor(pos), f = pos - i; vals.push(buf[i] * (1 - f) + buf[i + 1] * f); pos += 1.5; }
+        const drop = Math.floor(pos); buf = buf.slice(drop); pos -= drop;
+        return vals;
+      };
+    },
+    write(vals) {
+      const b = new Uint8Array(vals.length * 2), dv = new DataView(b.buffer);
+      vals.forEach((v, k) => dv.setInt16(k * 2, Math.max(-32768, Math.min(32767, Math.round(v))), true));
+      const m = new Uint8Array(out.length + b.length); m.set(out); m.set(b, out.length); out = m;
+      send(false);
+    },
+    flush() { send(true); },
+    // Termina cuando Simli avisa de silencio después del final previsto (o por tiempo, por si no avisa)
+    idle() {
+      return new Promise(res => {
+        let done = false;
+        const fin = () => { if (done) return; done = true; FACE.onSilent = null; clearTimeout(to); res(); };
+        const to = setTimeout(fin, Math.max(600, endAt - performance.now() + 2500));
+        FACE.onSilent = () => { if (performance.now() >= endAt - 700) fin(); };
+      });
+    },
+    clear() { out = new Uint8Array(0); const cl = FACE.client; if (cl) { try { cl.ClearBuffer(); } catch (e) {} } FACE.onSilent = null; }
   };
 }
 
@@ -2043,6 +2172,9 @@ function withWatchdog(p, text) {
   return Promise.race([p.then(() => "ok"), dog]).finally(() => clearTimeout(timer));
 }
 async function speakRaw(text, live) {
+  // Cara realista: si aún se está conectando se espera un poco; con cara, toda la voz pasa por ella
+  if (!live && state.ttsOn && tts && text && FACE.ready && !FACE.live) await faceWait();
+  if (!live && state.ttsOn && tts && text && faceActive() && tts.stream) { live = tts.stream(null); if (live) live.push(text); }
   if (live) {
     // La voz ya va sonando por frases: se espera a que termine. Si no llegó a sonar nada, se usa la voz normal.
     live.end();
@@ -2416,6 +2548,7 @@ async function finish() {
   V.phase = "idle";
   if (state.listening && dict) dict.stop().catch(() => {});
   stopSpeaking();
+  faceDisconnect();
   state.secs = Math.floor((Date.now() - state.start) / 1000);
   show("viewReport");
   $("viewReport").innerHTML = `<div class="card"><span class="spinner"></span>El evaluador está puntuando la transcripción con la rúbrica…</div>`;
@@ -2892,6 +3025,8 @@ window.renderSetup = function () {
     $("roleFixed").innerHTML = `<b>${esc(short)}${det ? " · " + esc(det) : ""}</b><span>Ves los casos de tu estamento. Para cambiarlo, pídelo a Docencia.</span>`;
   }
   $("providerGroup").classList.toggle("hidden", !isAdm);
+  $("faceGroup").classList.toggle("hidden", !isAdm);
+  drawFaceSeg();
   if (!isAdm) state.provider = state.defaultProvider || "anthropic";
   seg("providerSeg", [["anthropic", "Claude"], ["openai", "GPT"]], state.provider, v => { state.provider = v; renderSetup(); });
   $("providerHelp").textContent = (state.provider === "openai" ? "GPT (OpenAI) interpreta al personaje, da las pistas y evalúa." : "Claude (Anthropic) interpreta al personaje, da las pistas y evalúa.") + ` Los participantes usan ${state.defaultProvider === "openai" ? "GPT" : "Claude"} (se cambia en el Panel de Docencia).`;
@@ -2909,6 +3044,7 @@ const _startSession = window.startSession;
 window.startSession = function () {
   closeSheet();
   if (window.unlockAudio) unlockAudio();
+  faceConnect(currentCase());
   state.dbId = null;
   _startSession();
   const row = { user_id: state.profile.id, case_id: state.caseId, level: state.level, lang: state.lang, mode: state.mode, provider: state.provider, role_label: state.role || $("role").value };
@@ -2918,9 +3054,16 @@ window.startSession = function () {
   });
 };
 $("startBtn").onclick = () => window.startSession();
+function drawFaceSeg() {
+  const on = faceWanted();
+  document.querySelectorAll("#faceSeg button").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.face === "on") === on)));
+}
+document.querySelectorAll("#faceSeg button").forEach(b => b.onclick = () => { try { localStorage.setItem("faceMode", b.dataset.face); } catch (e) {} drawFaceSeg(); });
+window.addEventListener("pagehide", () => faceDisconnect());
 $("bigMic").addEventListener("click", () => { if (window.unlockAudio) unlockAudio(); }, true);
 const _exitSession = window.exitSession;
 window.exitSession = function () {
+  faceDisconnect();
   const id = state.dbId, secs = Math.floor((Date.now() - state.start) / 1000), turns = state.turns.slice();
   _exitSession();
   if (id) sb.from("sessions").update({ exited: true, ended_at: new Date().toISOString(), duration_s: secs, turns, hints: state.hintsUsed }).eq("id", id).then(() => {});

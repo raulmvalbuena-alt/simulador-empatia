@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-WNWFqHfeOdzfw/u+JkQ6YDoT6udfI2zQeZvqZ1tz4vQ=' 'sha256-M8cQYCMsEvk+idAvk8tJvqGRZl0MUKOJMWHCGNPNAI0=' 'sha256-zpF4q9U41SMVnNumV5gwhMEF8lc1P/xmt6ZU27Gsqik='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-NGROWQplMy3jT56lpGa6WoISxt6ZJYfWWKxXvrhRvRk=' 'sha256-M8cQYCMsEvk+idAvk8tJvqGRZl0MUKOJMWHCGNPNAI0=' 'sha256-zpF4q9U41SMVnNumV5gwhMEF8lc1P/xmt6ZU27Gsqik='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de empatía · Urgencias</title>
@@ -1198,7 +1198,7 @@ function makeTTS() {
 /* Cara realista (prueba V2 con Simli, solo Docencia): Simli recibe la voz del personaje y devuelve
    vídeo con los labios sincronizados. Si algo falla, se vuelve al dibujo y a la voz normal. */
 const FACE_BY_CASE = { box: "3bad681f-1b4a-4507-bc54-fbc675c191b7", masa: "5a83913c-411b-4afd-8432-b7d685e2aee6", via: "80459b57-2d66-4ca7-8682-59e1c649bc53", admision: "99767950-9d68-4783-a305-9118006d3363", pcr: "1d032d8b-0cff-4156-9f0d-f001f0738d9c", torax: "9fcd5739-bf66-49a5-b525-d02d7f0bc2fc", antibiotico: "f735e62c-dce7-4c0b-8e85-1c7e21774c45", identificacion: "03ce3ee8-db97-4150-a333-8f643d48fee9" };
-const FACE = { client: null, ready: null, live: false, onSilent: null, sid: 0 };
+const FACE = { client: null, ready: null, live: false, onSilent: null, sid: 0, why: "", blocked: "" };
 const faceWanted = () => !!(state.profile && state.profile.is_admin) && (() => { try { return localStorage.getItem("faceMode") !== "off"; } catch (e) { return true; } })();
 const faceActive = () => FACE.live && !!FACE.client;
 let simliMod = null;
@@ -1206,16 +1206,19 @@ function faceConnect(c) {
   faceDisconnect();
   if (!faceWanted() || !window.RTCPeerConnection) return;
   const sid = ++FACE.sid;
+  FACE.why = ""; FACE.blocked = "";
   try { $("simliAudio").play().catch(() => {}); } catch (e) {}
   FACE.ready = (async () => {
     try {
       simliMod = simliMod || await import("./vendor/simli-client.js");
       const d = await fnJSON("simli", { faceId: FACE_BY_CASE[c.id] || "" });
       if (sid !== FACE.sid) return false;
-      const cl = new simliMod.SimliClient(d.session_token, $("simliVideo"), $("simliAudio"), null, simliMod.LogLevel.ERROR);
+      // Conexión directa (p2p): la señal va por api.simli.ai y el vídeo por WebRTC, sin servidores intermedios desconocidos
+      const ice = Array.isArray(d.iceServers) && d.iceServers.length ? d.iceServers : [{ urls: ["stun:stun.l.google.com:19302"] }];
+      const cl = new simliMod.SimliClient(d.session_token, $("simliVideo"), $("simliAudio"), ice, simliMod.LogLevel.ERROR, "p2p");
       cl.on("silent", () => { if (FACE.onSilent) FACE.onSilent(); });
       cl.on("stop", () => { if (FACE.client === cl) faceFallback("La cara realista se ha desconectado; sigue con el dibujo."); });
-      cl.on("error", m => { console.warn("simli", m); });
+      cl.on("error", m => { console.warn("simli", m); FACE.why = String(m); });
       FACE.client = cl;
       await cl.start();
       if (sid !== FACE.sid) { try { cl.stop(); } catch (e) {} return false; }
@@ -1224,16 +1227,23 @@ function faceConnect(c) {
       return true;
     } catch (e) {
       console.warn("simli", e);
-      if (sid === FACE.sid) faceFallback("No se ha podido cargar la cara realista; sigue con el dibujo.");
+      const why = FACE.blocked ? "el navegador ha bloqueado la conexión con " + FACE.blocked : (FACE.why || (e && (e.message || e.detail)) || String(e));
+      if (sid === FACE.sid) faceFallback("No se ha podido cargar la cara realista (" + String(why).slice(0, 160) + "); sigue con el dibujo.", true);
       return false;
     }
   })();
 }
-function faceFallback(msg) {
+function faceFallback(msg, always) {
   const had = FACE.live || FACE.client;
   faceDisconnect();
-  if (had && msg && $("viewSession") && !$("viewSession").classList.contains("hidden")) addMsg("sys", msg);
+  if ((had || always) && msg) addMsg("sys", msg);
 }
+// Diagnóstico: si la política de seguridad de la página bloquea alguna conexión de la cara, se dice cuál
+document.addEventListener("securitypolicyviolation", e => {
+  if (!FACE.ready) return;
+  try { FACE.blocked = new URL(e.blockedURI).host; } catch (x) { FACE.blocked = String(e.blockedURI || e.violatedDirective); }
+  console.warn("CSP bloqueó", e.blockedURI, e.violatedDirective);
+});
 function faceDisconnect() {
   FACE.sid++;
   const cl = FACE.client;

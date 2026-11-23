@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-NGROWQplMy3jT56lpGa6WoISxt6ZJYfWWKxXvrhRvRk=' 'sha256-M8cQYCMsEvk+idAvk8tJvqGRZl0MUKOJMWHCGNPNAI0=' 'sha256-zpF4q9U41SMVnNumV5gwhMEF8lc1P/xmt6ZU27Gsqik='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co https://api.simli.ai wss://api.simli.ai https://*.simli.ai wss://*.simli.ai https://*.livekit.cloud wss://*.livekit.cloud; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-wJmvyvHeqgX0xR0/eWjoBS4HFNYzECwt9Gv3Cl1gMEU=' 'sha256-M8cQYCMsEvk+idAvk8tJvqGRZl0MUKOJMWHCGNPNAI0=' 'sha256-ptszVzDipi6/eDBb9Xukxmhm62yCZe/NMq6U3jlF8AQ='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co https://api.simli.ai wss://api.simli.ai https://*.simli.ai wss://*.simli.ai https://*.livekit.cloud wss://*.livekit.cloud; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de empatía · Urgencias</title>
@@ -186,7 +186,11 @@ input[type=text]:focus, select:focus, textarea:focus { border-color: var(--accen
 /* Cara realista (Simli, prueba para Docencia): vídeo dentro del mismo círculo que el dibujo */
 .avatar-holder { position: relative; }
 .simli-face { position: absolute; inset: 18px; border-radius: 50%; overflow: hidden; z-index: 1; background: #0b1117; opacity: 0; pointer-events: none; transition: opacity .4s ease; }
-.simli-face video { width: 100%; height: 100%; object-fit: cover; transform: scale(var(--face-zoom, 1.6)); transform-origin: 50% var(--face-y, 30%); }
+.simli-face video { width: 100%; height: 100%; object-fit: cover; transform: translate(var(--fx, 0%), var(--fy, 0%)) scale(var(--fz, 1)); transform-origin: 50% 50%; }
+.frame-btn { border: 0; background: none; color: var(--accent); font-weight: 600; font-size: 13px; padding: 4px 8px; }
+.frame-ctl { width: min(100%, 300px); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; font-size: 13px; color: var(--muted); text-align: left; }
+.frame-ctl label { display: grid; grid-template-columns: 78px 1fr; align-items: center; gap: 8px; margin: 4px 0; }
+.frame-ctl input { width: 100%; }
 .avatar-holder.live .simli-face { opacity: 1; }
 .avatar-holder.live .avatar-wrap .face { visibility: hidden; }
 .pname { font-family: var(--font-display); font-size: 22px; font-weight: 700; margin-top: 4px; }
@@ -872,6 +876,13 @@ main { padding-bottom: 24px; max-width: 1240px; }
             <div class="simli-face" aria-hidden="true"><video id="simliVideo" autoplay playsinline muted></video></div>
             <audio id="simliAudio" autoplay playsinline></audio>
           </div>
+          <button class="frame-btn hidden" id="frameBtn" type="button">Encuadrar la cara</button>
+          <div class="frame-ctl hidden" id="frameCtl">
+            <label>Tamaño <input id="fz" type="range" min="0.5" max="3" step="0.05" value="1"></label>
+            <label>Horizontal <input id="fx" type="range" min="-60" max="60" step="1" value="0"></label>
+            <label>Vertical <input id="fy" type="range" min="-60" max="60" step="1" value="0"></label>
+            <div>Se guarda para esta cara y lo verán todos.</div>
+          </div>
           <div class="pname" id="pName"></div>
           <div class="emo"><span id="emoLabel"></span><span><b id="emoVal"></b> / 10</span><span id="emoDelta" class="delta hidden"></span></div>
           <div class="meter" aria-hidden="true"><span class="meter-dot" id="meterDot"></span></div>
@@ -1223,7 +1234,10 @@ function faceConnect(c) {
       await cl.start();
       if (sid !== FACE.sid) { try { cl.stop(); } catch (e) {} return false; }
       FACE.live = true;
+      FACE.faceId = d.faceId || FACE_BY_CASE[c.id];
+      applyFrame();
       $("avatarHolder").classList.add("live");
+      $("frameBtn").classList.remove("hidden");
       return true;
     } catch (e) {
       console.warn("simli", e);
@@ -1249,8 +1263,24 @@ function faceDisconnect() {
   const cl = FACE.client;
   FACE.client = null; FACE.live = false; FACE.ready = null; FACE.onSilent = null;
   const h = $("avatarHolder"); if (h) h.classList.remove("live");
+  if ($("frameBtn")) { $("frameBtn").classList.add("hidden"); $("frameCtl").classList.add("hidden"); }
   if (cl) { try { cl.stop(); } catch (e) {} }
 }
+/* Encuadre de cada cara dentro del círculo (lo ajusta Docencia una vez y se guarda para todos) */
+function frameOf(id) { const f = (state.faceFrames || {})[id] || {}; return { z: Number(f.z) || 1, x: Number(f.x) || 0, y: Number(f.y) || 0 }; }
+function applyFrame(f) {
+  f = f || frameOf(FACE.faceId);
+  const el = document.querySelector(".simli-face");
+  if (el) { el.style.setProperty("--fz", f.z); el.style.setProperty("--fx", f.x + "%"); el.style.setProperty("--fy", f.y + "%"); }
+  if ($("fz")) { $("fz").value = f.z; $("fx").value = f.x; $("fy").value = f.y; }
+}
+function frameFromSliders() { return { z: Number($("fz").value), x: Number($("fx").value), y: Number($("fy").value) }; }
+async function saveFrame() {
+  if (!FACE.faceId) return;
+  state.faceFrames = { ...(state.faceFrames || {}), [FACE.faceId]: frameFromSliders() };
+  try { await sb.from("app_settings").upsert({ key: "face_frames", value: state.faceFrames, updated_at: new Date().toISOString() }); } catch (e) {}
+}
+
 // Espera a que la cara esté lista (como mucho unos segundos) antes de que el personaje hable
 async function faceWait(ms = 7000) {
   if (!FACE.ready) return faceActive();
@@ -2919,6 +2949,7 @@ async function loadSettings() {
     const m = Object.fromEntries((data || []).map(r => [r.key, r.value]));
     state.defaultProvider = m.default_provider === "openai" ? "openai" : "anthropic";
     state.usdEur = Number(m.usd_eur) > 0 ? Number(m.usd_eur) : 0.88;
+    try { const ff = m.face_frames; state.faceFrames = typeof ff === "string" ? JSON.parse(ff) : (ff && typeof ff === "object" ? ff : {}); } catch (e) { state.faceFrames = {}; }
   } catch (e) { state.defaultProvider = "anthropic"; }
   state.provider = state.defaultProvider;
 }
@@ -3070,6 +3101,8 @@ function drawFaceSeg() {
 }
 document.querySelectorAll("#faceSeg button").forEach(b => b.onclick = () => { try { localStorage.setItem("faceMode", b.dataset.face); } catch (e) {} drawFaceSeg(); });
 window.addEventListener("pagehide", () => faceDisconnect());
+$("frameBtn").onclick = () => $("frameCtl").classList.toggle("hidden");
+["fz", "fx", "fy"].forEach(id => { $(id).addEventListener("input", () => applyFrame(frameFromSliders())); $(id).addEventListener("change", saveFrame); });
 $("bigMic").addEventListener("click", () => { if (window.unlockAudio) unlockAudio(); }, true);
 const _exitSession = window.exitSession;
 window.exitSession = function () {

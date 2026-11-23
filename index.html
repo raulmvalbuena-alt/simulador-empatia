@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PXIUg9S21EKYfqh2vAkgsaMABXzAgStobiezxrZ0RhE=' 'sha256-TPdXQ+1Pcm0j/ry5IfXkulLYjBszQiW00/sUL2fYKIw=' 'sha256-RSd7e50VmBON5/tIBvG+fVJJ5ytbYP0Mr8KJc5WE2aI='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-YffTdFdTtZ6JGBua9mWmj5hvX4H2rp86GjkRylST3ao=' 'sha256-zrwXP58SmtIXonMTlRL4gViPLJ7klb67pq+gsbk3G0s=' 'sha256-RSd7e50VmBON5/tIBvG+fVJJ5ytbYP0Mr8KJc5WE2aI='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de empatía · Urgencias</title>
@@ -999,30 +999,148 @@ const player = new Audio();
 player.preload = "auto";
 player.setAttribute("playsinline", "");
 let audioUnlocked = false;
+/* Voz en directo: audio PCM (24 kHz) que se reproduce mientras llega del servidor */
+let AC = null;
+function ensureAC() {
+  const C = window.AudioContext || window.webkitAudioContext;
+  if (!C) return null;
+  try {
+    if (!AC) AC = new C();
+    if (AC.state === "suspended") AC.resume().catch(() => {});
+  } catch (e) { return null; }
+  return AC;
+}
 window.unlockAudio = function () {
+  // En el iPhone el audio en directo también se desbloquea con un toque
+  try { const ac = ensureAC(); if (ac) { const b = ac.createBuffer(1, 1, 22050), s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(0); } } catch (e) {}
   if (audioUnlocked) return;
   try { player.src = SILENT_MP3; const p = player.play(); if (p) p.then(() => { audioUnlocked = true; }).catch(() => {}); } catch (e) {}
 };
+function ttsBody(text, voiceOpt, format) {
+  const c = currentCase();
+  const voice = OPENAI_VOICES.includes(voiceOpt) ? voiceOpt : (c.gender === "f" ? "coral" : "ash");
+  const instructions = `Eres ${c.name}${c.age ? ", de " + c.age + " años" : ""}. Habla en ${LANG_NAME[state.lang] || "castellano de España"}, con naturalidad, como una persona real en un servicio de Urgencias, no como un locutor. Emoción: ${c.emocion || "neutra"}, intensidad ${state.emotion ?? 5} de 10. Que se note la emoción en el tono, el ritmo y las pausas, sin exagerar.`;
+  return { text, voice, instructions, session_id: state.dbId || null, ...(format ? { format } : {}) };
+}
 function makeTTS() {
-  let audio = null, stateCb = () => {}, rejectCurrent = null;
+  let audio = null, stateCb = () => {}, rejectCurrent = null, live = null;
   return {
     onState(f) { stateCb = f; },
+    /* Voz por frases: cada frase se pide en cuanto el personaje la escribe y suena mientras llega.
+       Devuelve null si el navegador no puede (entonces se usa la voz normal). */
+    stream(onStart) {
+      this.stop();
+      const ac = ensureAC();
+      if (!ac || ac.state !== "running" || !window.ReadableStream) return null;
+      const voice = caseVoice(currentCase());
+      const ctl = new AbortController(), items = [], nodes = new Set();
+      let cur = 0, ended = false, nextT = 0, started = false, finished = false, res_, rej_;
+      const done = new Promise((a, b) => { res_ = a; rej_ = b; });
+      done.catch(() => {});
+      const finish = err => {
+        if (finished) return;
+        finished = true;
+        try { player.pause(); player.loop = false; } catch (e) {}
+        if (live === L) live = null;
+        if (err) {
+          ctl.abort();
+          nodes.forEach(n => { try { n.stop(); } catch (e) {} });
+          nodes.clear();
+          rej_(err);
+        } else res_();
+        stateCb({ state: "idle", reason: err ? "viewer_stopped" : "completed" });
+      };
+      const check = () => { if (!finished && ended && cur >= items.length && nodes.size === 0) finish(); };
+      const schedule = (it, bytes) => {
+        let b = bytes;
+        if (it.left) { const m = new Uint8Array(it.left.length + b.length); m.set(it.left); m.set(b, it.left.length); b = m; it.left = null; }
+        if (b.length % 2) { it.left = b.slice(b.length - 1); b = b.slice(0, b.length - 1); }
+        const n = b.length / 2;
+        if (!n) return;
+        const dv = new DataView(b.buffer, b.byteOffset, b.length);
+        const buf = ac.createBuffer(1, n, 24000), ch = buf.getChannelData(0);
+        for (let i = 0; i < n; i++) ch[i] = dv.getInt16(i * 2, true) / 32768;
+        const src = ac.createBufferSource();
+        src.buffer = buf; src.connect(ac.destination);
+        const t = Math.max(nextT, ac.currentTime + 0.06);
+        src.start(t); nextT = t + buf.duration;
+        nodes.add(src);
+        src.onended = () => { nodes.delete(src); check(); };
+        if (!started) {
+          started = true;
+          // En el iPhone, un audio silencioso en marcha hace que la voz suene aunque el móvil esté en silencio
+          try { player.loop = true; player.src = SILENT_MP3; player.play().catch(() => {}); } catch (e) {}
+          stateCb({ state: "speaking" });
+          if (onStart) onStart();
+        }
+      };
+      const pump = () => {
+        if (finished) return;
+        while (cur < items.length) {
+          const it = items[cur];
+          if (it.chunks.length) {
+            const total = it.chunks.reduce((a, c) => a + c.length, 0);
+            if (total >= 4800 || it.done) {
+              const m = new Uint8Array(total); let o = 0;
+              for (const c of it.chunks) { m.set(c, o); o += c.length; }
+              it.chunks = [];
+              schedule(it, m);
+            }
+          }
+          if (it.done && !it.chunks.length) cur++; else break;
+        }
+        check();
+      };
+      const fetchItem = async (it, text) => {
+        try {
+          const res = await fnFetch("tts", ttsBody(text, voice, "pcm"), ctl.signal);
+          if (!res.ok || !res.body) throw { code: res.status === 429 ? "rate_limited" : "error" };
+          if (M.turn && M.turn.tts_ms == null && M.turn.ttsAt) M.turn.tts_ms = Math.round(performance.now() - M.turn.ttsAt);
+          const rd = res.body.getReader();
+          while (true) {
+            const { value, done: d } = await rd.read();
+            if (d || finished) break;
+            it.chunks.push(value);
+            pump();
+          }
+        } catch (e) {
+          if (finished) return;
+          if (!started) { finish(e && e.code ? e : { code: "error" }); return; }
+        }
+        it.done = true;
+        pump();
+      };
+      const L = {
+        done,
+        get started() { return started; },
+        push(text) {
+          if (finished || ended || !text) return;
+          if (M.turn && !M.turn.ttsAt) M.turn.ttsAt = performance.now();
+          const it = { chunks: [], done: false, left: null };
+          items.push(it);
+          fetchItem(it, text);
+        },
+        end() { ended = true; pump(); },
+        cancel() { finish({ code: "viewer_stopped" }); }
+      };
+      live = L;
+      return L;
+    },
     stop() {
+      if (live) { const l = live; live = null; l.cancel(); }
       if (audio) { try { audio.pause(); } catch (e) {} audio = null; }
       if (rejectCurrent) { const r = rejectCurrent; rejectCurrent = null; r({ code: "viewer_stopped" }); }
       stateCb({ state: "idle", reason: "viewer_stopped" });
     },
     async speak(text, opts = {}) {
       this.stop();
-      const c = currentCase();
-      const voice = OPENAI_VOICES.includes(opts.voice) ? opts.voice : (c.gender === "f" ? "coral" : "ash");
-      const instructions = `Eres ${c.name}${c.age ? ", de " + c.age + " años" : ""}. Habla en ${LANG_NAME[state.lang] || "castellano de España"}, con naturalidad, como una persona real en un servicio de Urgencias, no como un locutor. Emoción: ${c.emocion || "neutra"}, intensidad ${state.emotion ?? 5} de 10. Que se note la emoción en el tono, el ritmo y las pausas, sin exagerar.`;
       const tt0 = performance.now();
-      const res = await fnFetch("tts", { text, voice, instructions, session_id: state.dbId || null });
+      const res = await fnFetch("tts", ttsBody(text, opts.voice));
       if (!res.ok) throw { code: res.status === 429 ? "rate_limited" : "error" };
       const url = URL.createObjectURL(await res.blob());
       if (M.turn) M.turn.tts_ms = Math.round(performance.now() - tt0);
       const a = player;
+      a.loop = false;
       a.src = url;
       audio = a;
       stateCb({ state: "speaking" });
@@ -1713,6 +1831,85 @@ function extractJSON(text) {
   if (a < 0 || b < a) throw new Error("Respuesta sin JSON");
   return JSON.parse(t.slice(a, b + 1));
 }
+/* Respuesta del personaje en directo: el texto llega a trozos y cada frase se pasa a la voz en cuanto está completa */
+function partialReply(t) {
+  const m = /"respuesta"\s*:\s*"/.exec(t);
+  if (!m) return null;
+  let i = m.index + m[0].length, out = "", closed = false;
+  while (i < t.length) {
+    const ch = t[i];
+    if (ch === "\\") {
+      if (i + 1 >= t.length) break;
+      const n = t[i + 1];
+      if (n === "u") { if (i + 6 > t.length) break; out += String.fromCharCode(parseInt(t.slice(i + 2, i + 6), 16)); i += 6; continue; }
+      out += ({ n: " ", t: " ", r: "", b: "", f: "" })[n] ?? n; i += 2; continue;
+    }
+    if (ch === '"') { closed = true; break; }
+    out += ch; i++;
+  }
+  return { text: out, closed };
+}
+function feedSentences(live, s, closed, sent) {
+  while (true) {
+    const rest = s.slice(sent), re = /[.!?…]+[»"”)]*\s+/g;
+    let cut = -1, mm;
+    while ((mm = re.exec(rest))) { if (mm.index + mm[0].length >= 14) { cut = mm.index + mm[0].length; break; } }
+    if (cut < 0) break;
+    live.push(rest.slice(0, cut).trim());
+    sent += cut;
+  }
+  if (closed && sent < s.length) { const r = s.slice(sent).trim(); if (r) live.push(r); sent = s.length; }
+  return sent;
+}
+async function streamPatient(ms, live) {
+  if (!M.turn || M.turn.llm_ms != null) metricTurnStart("text");
+  const t0 = performance.now(), ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), ms);
+  let text = "", sent = 0;
+  try {
+    const ctx = { case_id: state.caseId, level: state.level, lang: state.lang, role: state.role || ($("role") && $("role").value) || "", emotion: state.emotion, turns: state.turns.map(t => ({ who: t.who, text: t.text })) };
+    const res = await fnFetch("llm", { step: "patient", ctx, session_id: state.dbId || null, provider: state.provider || "anthropic", stream: true }, ctl.signal);
+    const ct = res.headers.get("content-type") || "";
+    if (!res.ok || ct.includes("application/json")) {
+      let d = {};
+      try { d = await res.json(); } catch (e) {}
+      if (!res.ok) throw { code: d.code || (res.status === 429 ? "rate_limited" : "server_error"), message: d.error || "Error del servidor" };
+      text = d.text || "";
+    } else {
+      const rd = res.body.getReader(), dec = new TextDecoder();
+      while (true) {
+        const { value, done } = await rd.read();
+        if (done) break;
+        text += dec.decode(value, { stream: true });
+        if (live) {
+          const pr = partialReply(text);
+          if (pr) {
+            const before = sent;
+            sent = feedSentences(live, pr.text, pr.closed, sent);
+            if (before === 0 && sent > 0 && M.turn && M.turn.llm_ms == null) M.turn.llm_ms = Math.round(performance.now() - t0);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    throw (e && e.code) ? e : { code: ctl.signal.aborted ? "timeout" : "server_error" };
+  } finally { clearTimeout(timer); }
+  const r = extractJSON(text);
+  if (live) {
+    const full = String(r.respuesta || "").trim();
+    if (sent === 0) { if (full) live.push(full); }
+    else if (sent < full.length) { const rest = full.slice(sent).trim(); if (rest) live.push(rest); }
+  }
+  if (M.turn && M.turn.llm_ms == null) M.turn.llm_ms = Math.round(performance.now() - t0);
+  return r;
+}
+function liveStarted(sid) {
+  if (sid !== state.sid) return;
+  const w = $("avatarWrap");
+  if (w) { w.classList.remove("thinking"); w.classList.add("speaking"); }
+  if (state.mode === "voice" && V.phase === "thinking") setPhase("speaking");
+  metricTurnEnd();
+}
 async function askJSON(prompt, tier, ms = 30000) {
   const ctl = new AbortController();
   let timer;
@@ -1820,8 +2017,8 @@ Devuelve SOLO JSON válido con esta forma:
 Incluye exactamente los ítems ${block.map(b => b[0]).join(", ")} en "bloque", ${F.nurse.map(b => b[0]).join(", ")} en "nurse" y 10 números enteros del 1 al 5 en "care". Exactamente 2 fortalezas y 2 mejoras.`;
 }
 
-function speakAsync(text) {
-  const p = speakRaw(text), w = $("avatarWrap");
+function speakAsync(text, live) {
+  const p = speakRaw(text, live), w = $("avatarWrap");
   if (state.ttsOn && w) {
     w.classList.add("speaking");
     p.finally(() => { if (V.phase !== "speaking") w.classList.remove("speaking"); });
@@ -1845,7 +2042,18 @@ function withWatchdog(p, text) {
   const dog = new Promise(res => { timer = setTimeout(() => { try { tts && tts.stop(); } catch (e) {} res("timeout"); }, ms); });
   return Promise.race([p.then(() => "ok"), dog]).finally(() => clearTimeout(timer));
 }
-async function speakRaw(text) {
+async function speakRaw(text, live) {
+  if (live) {
+    // La voz ya va sonando por frases: se espera a que termine. Si no llegó a sonar nada, se usa la voz normal.
+    live.end();
+    try {
+      const r = await withWatchdog(live.done, text);
+      if (r === "ok") { voiceFails = 0; return; }
+      if (live.started) return;
+    } catch (e) {
+      if ((e && e.code === "viewer_stopped") || !state.ttsOn || live.started) return;
+    }
+  }
   if (!state.ttsOn || !tts || !text) return;
   if (state.listening && dict) { try { await dict.stop(); } catch (e) {} }
   const opts = { voice: caseVoice(currentCase()), language: state.lang, rate: 1 };
@@ -1961,12 +2169,12 @@ function setCaption(text, mine) {
   $("caption").textContent = text ? "«" + text + "»" : "";
   $("mine").textContent = "";
 }
-async function patientSpeaks(text) {
+async function patientSpeaks(text, live) {
   setCaption(text, false);
-  if (!state.ttsOn) { setPhase(state.ended ? "ended" : "ready"); return; }
+  if (!state.ttsOn) { if (live) live.cancel(); setPhase(state.ended ? "ended" : "ready"); return; }
   setPhase("speaking");
   const sid = state.sid;
-  await speakAsync(text);
+  await speakAsync(text, live);
   if (V.phase !== "speaking" || sid !== state.sid) return;
   if (state.ended) { setPhase("ended"); return; }
   setPhase("ready");
@@ -2106,8 +2314,10 @@ async function send(spoken) {
   }, 8000);
   try {
     let r;
-    try { r = await askJSON(patientPrompt(), "quick", 18000); }
+    let live = (state.ttsOn && tts && tts.stream) ? tts.stream(() => liveStarted(sid)) : null;
+    try { r = await streamPatient(18000, live); }
     catch (e1) {
+      if (live) { live.cancel(); live = null; }
       if (sid !== state.sid) return;
       if (e1 && e1.code === "not_granted") throw e1;
       if (e1 && e1.code === "rate_limited") await new Promise(res => setTimeout(res, 3000));
@@ -2126,8 +2336,8 @@ async function send(spoken) {
     addMsg("patient", reply, delta ? ` <span class="chip">${delta > 0 ? "▲ +" + delta : "▼ " + delta}</span>` : "");
     if (r.fin === true || state.emotion >= 10) { state.ended = true; $("input").disabled = true; }
     state.busy = false; $("sendBtn").disabled = false;
-    if (state.mode === "voice") patientSpeaks(reply);
-    else { setCaption(reply, false); setPhase(state.ended ? "ended" : "ready"); speakAsync(reply); }
+    if (state.mode === "voice") patientSpeaks(reply, live);
+    else { setCaption(reply, false); setPhase(state.ended ? "ended" : "ready"); speakAsync(reply, live); }
     const coach = wantHint && !state.ended ? await askJSON(coachPrompt(), "quick", 15000).catch(() => null) : null;
     if (sid !== state.sid) return;
     if (coach && coach.pista && !state.ended) {

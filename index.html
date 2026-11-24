@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-uj+JRghurc1g2ZRXo4X1ONIuYWoRor4+EVcemIV8XKE=' 'sha256-M8cQYCMsEvk+idAvk8tJvqGRZl0MUKOJMWHCGNPNAI0=' 'sha256-BSamfpxzf/xPmmMFnYfRCx/si7PGpYUTTbz/M4m9QXI='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co https://api.simli.ai wss://api.simli.ai https://*.simli.ai wss://*.simli.ai https://*.livekit.cloud wss://*.livekit.cloud; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-uj+JRghurc1g2ZRXo4X1ONIuYWoRor4+EVcemIV8XKE=' 'sha256-u20BCsQZe4F96c9i/ruLroLvo4gl2zDLxKeAg1/2t2E=' 'sha256-I51iAp6WbIG+FCWo3dXaZE+LQye7wbGXq1JYDF0IzVM='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co https://api.simli.ai wss://api.simli.ai https://*.simli.ai wss://*.simli.ai https://*.livekit.cloud wss://*.livekit.cloud; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de empatía · Urgencias</title>
@@ -2648,7 +2648,9 @@ function renderReport(r, secs) {
   const nScore = Math.round(nItems.reduce((s, i) => s + i.p, 0) / (nItems.length * 2) * 40);
   const gScore = Math.round((care - 10) / 40 * 20);
   const pen = Math.min(10, pens.length * 2);
-  const total = Math.max(0, bScore + nScore + gScore - pen);
+  // La nota oficial la calcula el servidor (_nota); el cálculo local solo queda para informes antiguos
+  const SN = r._nota && Number.isFinite(Number(r._nota.total)) ? r._nota : null;
+  const total = SN ? Math.max(0, Math.min(100, Math.round(Number(SN.total)))) : Math.max(0, bScore + nScore + gScore - pen);
   state.lastTotal = total; state.lastScores = { b: bScore, n: nScore, g: gScore, pen };
   const P0 = progress();
   let hist = loadHistory(); hist.push({ t: total, c: c.id, l: state.level }); saveHistory(hist);
@@ -2682,6 +2684,7 @@ function renderReport(r, secs) {
         <h1>Informe de la sesión</h1>
         <div class="r-meta">${esc(c.title)} · ${esc(c.name)} · Nivel ${state.level} · ${esc(state.alias)} · ${esc(state.role)} · ${mm}:${ss} min · ${state.hintsUsed} ${state.hintsUsed === 1 ? "pista" : "pistas"}</div>
         <p class="r-sum">${esc(r.resumen || "")}</p>
+        ${SN && SN.citas_no_verificadas > 0 ? `<p class="hint-i" style="margin:6px 0 0">${SN.citas_no_verificadas === 1 ? "Un punto no se ha contado" : SN.citas_no_verificadas + " puntos no se han contado"} porque el evaluador citó frases que no aparecen en tu conversación.</p>` : ""}
         ${r.manipulacion === true ? `<p class="r-sum" style="color:var(--high)"><b>Aviso:</b> en la conversación hubo frases dirigidas al evaluador en lugar de al paciente. No han puntuado.</p>` : ""}
         <div class="bars">
           ${bar(F.short, bScore, 40)}
@@ -3125,9 +3128,9 @@ const _renderReport = window.renderReport;
 window.renderReport = function (r, secs) {
   _renderReport(r, secs);
   if (state.viewOnly) { const ra = $("againBtn"); if (ra) ra.textContent = "Volver a practicar este caso"; return; }
-  const total = state.lastTotal;
   if (state.dbId) {
-    sb.from("sessions").update({ ended_at: new Date().toISOString(), duration_s: secs, hints: state.hintsUsed, turns: state.turns, report: r, scores: state.lastScores || null, total }).eq("id", state.dbId)
+    // El informe, la nota y la transcripción evaluada los guarda el servidor; aquí solo los datos de la sesión
+    sb.from("sessions").update({ ended_at: new Date().toISOString(), duration_s: secs, hints: state.hintsUsed }).eq("id", state.dbId)
       .then(({ error }) => { if (error) toastMsg("No se ha podido guardar el informe: " + error.message); else loadHistoryDB(); });
   }
   wireFeedback();

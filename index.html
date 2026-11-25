@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-uj+JRghurc1g2ZRXo4X1ONIuYWoRor4+EVcemIV8XKE=' 'sha256-u20BCsQZe4F96c9i/ruLroLvo4gl2zDLxKeAg1/2t2E=' 'sha256-I51iAp6WbIG+FCWo3dXaZE+LQye7wbGXq1JYDF0IzVM='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co https://api.simli.ai wss://api.simli.ai https://*.simli.ai wss://*.simli.ai https://*.livekit.cloud wss://*.livekit.cloud; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-7Wr+lD4S05SpdptPtnD0UzeKMZznyJSYo5wsDIyO8y4=' 'sha256-u20BCsQZe4F96c9i/ruLroLvo4gl2zDLxKeAg1/2t2E=' 'sha256-I51iAp6WbIG+FCWo3dXaZE+LQye7wbGXq1JYDF0IzVM='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://gkdayvzuvkygttvptuit.supabase.co wss://gkdayvzuvkygttvptuit.supabase.co https://api.simli.ai wss://api.simli.ai https://*.simli.ai wss://*.simli.ai https://*.livekit.cloud wss://*.livekit.cloud; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de empatía · Urgencias</title>
@@ -1341,6 +1341,27 @@ function faceSink() {
 /* Dictado: graba con el micrófono y transcribe en el servidor al terminar */
 function makeDictation() {
   let rec = null, stream = null, chunks = [], tick = null, pending = null, recStart = 0;
+  // Detector de voz: mide el volumen mientras se graba. Si apenas hay voz (un toque sin querer, silencio, ruido),
+  // la grabación no se envía: el transcriptor tiende a inventarse frases con audios vacíos.
+  let meter = null;
+  const startMeter = s => {
+    meter = { voicedMs: 0, maxRms: 0, src: null, an: null, iv: null };
+    try {
+      const ac = ensureAC(); if (!ac) return;
+      const src = ac.createMediaStreamSource(s), an = ac.createAnalyser();
+      an.fftSize = 1024; src.connect(an);
+      const buf = new Float32Array(an.fftSize), m = meter;
+      m.src = src; m.an = an;
+      m.iv = setInterval(() => {
+        an.getFloatTimeDomainData(buf);
+        let sum = 0; for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+        const rms = Math.sqrt(sum / buf.length);
+        if (rms > m.maxRms) m.maxRms = rms;
+        if (rms > 0.015) m.voicedMs += 100;
+      }, 100);
+    } catch (e) {}
+  };
+  const stopMeter = () => { const m = meter; if (!m) return null; clearInterval(m.iv); try { m.src && m.src.disconnect(); } catch (e) {} return m; };
   const cb = { s: () => {}, p: () => {}, f: () => {} };
   const pickMime = () => ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
   return {
@@ -1356,6 +1377,7 @@ function makeDictation() {
       rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
       rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
       rec.start(250);
+      startMeter(stream);
       const t0 = Date.now();
       recStart = t0;
       cb.s({ state: "listening" });
@@ -1370,12 +1392,15 @@ function makeDictation() {
       pending = (async () => {
         clearInterval(tick);
         const r = rec;
+        const m = stopMeter();
         await new Promise(res => { r.onstop = res; r.stop(); });
         if (stream) stream.getTracks().forEach(t => t.stop());
         stream = null;
         const blob = new Blob(chunks, { type: r.mimeType || "audio/webm" });
         let text = "";
-        if (blob.size > 1500) {
+        // Sin voz: menos de 1 s grabado o, si el medidor funciona (maxRms > 0), menos de 0,3 s con voz
+        const noVoice = recSecs < 1 || (m && m.maxRms > 0 && m.voicedMs < 300);
+        if (blob.size > 1500 && !noVoice) {
           cb.p({ text: "Transcribiendo…" });
           try {
             const fd = new FormData();
@@ -1383,6 +1408,7 @@ function makeDictation() {
             fd.append("file", blob, "voz." + ext);
             fd.append("lang", state.lang || "es");
             fd.append("secs", String(recSecs));
+            try { fd.append("hint", currentCase().name || ""); } catch (e) {}
             if (state.dbId) fd.append("session_id", state.dbId);
             const st0 = performance.now();
             text = ((await fnJSON("stt", fd)).text || "").trim();
